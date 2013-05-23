@@ -1,0 +1,320 @@
+package main
+
+import (
+	"encoding/json"
+	"flag"
+	"fmt"
+	"github.com/Kovensky/go-lastfm"
+	"github.com/fluffle/goirc/client"
+	"log"
+	"os"
+	"sort"
+	"strings"
+	"time"
+)
+
+var (
+	requireAuth = flag.Bool("require-auth", true,
+		`Requires that nicknames be authenticated for using the user-nick mapping. `+
+			`Disable on networks that don't implement a NickServ, such as EFNet.`)
+
+	saveNicks = flag.Bool("save-nicks", true, `Whether to persist the user-nick mappings.`)
+	nickFile  = flag.String("nick-file", "", `JSON file where user-nick map is stored. If blank, {{server}}.nicks.json is used.`)
+)
+
+func loadNickMap() {
+	if *saveNicks {
+		path := *nickFile
+		if path == "" {
+			path = *server + ".nicks.json"
+		}
+		fh, err := os.Open(path)
+		if err != nil {
+			log.Println("Error opening nick persistence file:", err)
+		} else {
+			j := json.NewDecoder(fh)
+			err = j.Decode(nickMap)
+			if err != nil {
+				log.Println("Error reading nick-user map:", err)
+			}
+			fh.Close()
+		}
+	}
+}
+
+func saveNickMap() {
+	if *saveNicks {
+		path := *nickFile
+		if path == "" {
+			path = *server + ".nicks.json"
+		}
+		fh, err := os.Create(path)
+		if err != nil {
+			log.Println("Error creating nick persistence file:", err)
+		} else {
+			b, err := json.MarshalIndent(nickMap, "", "\t")
+			if err != nil {
+				log.Println("Error marshaling nick-user map:", err)
+			}
+			_, err = fh.Write(b)
+			if err != nil {
+				log.Println("Error writing persistence file:", err)
+			}
+
+			fh.Close()
+		}
+	}
+}
+
+func addNickHandlers(irc *client.Conn) {
+	if !flag.Parsed() {
+		flag.Parse()
+	}
+
+	irc.AddHandler("QUIT", dropIdentifiedCache)
+	irc.AddHandler("307", isIdentified)
+	irc.AddHandler("330", isIdentified)
+	irc.AddHandler("318", isIdentified)
+}
+
+type NickMap struct {
+	nickMap    map[string]string
+	reverseMap map[string][]string
+}
+
+func NewNickMap() *NickMap {
+	return &NickMap{
+		nickMap:    make(map[string]string),
+		reverseMap: make(map[string][]string)}
+}
+
+func (m *NickMap) MarshalJSON() (j []byte, err error) {
+	data := make(map[string][]string)
+	for _, rm := range m.reverseMap {
+		if len(m.reverseMap) > 0 {
+			user := m.nickMap[strings.ToLower(rm[0])]
+			data[user] = rm
+		}
+	}
+	return json.Marshal(data)
+}
+
+func (m *NickMap) UnmarshalJSON(j []byte) (err error) {
+	data := make(map[string][]string)
+	err = json.Unmarshal(j, &data)
+	for user, nicks := range data {
+		for _, nick := range nicks {
+			m.setUser(nick, user)
+		}
+	}
+	return
+}
+
+type NickMapError string
+
+func (err *NickMapError) Error() string {
+	return string(*err)
+}
+
+func (m *NickMap) AddNick(irc *client.Conn, target, nick, user string) (err error) {
+	log.Println("Associating", nick, "with user", user)
+	identified := checkIdentified(irc, nick)
+	if !identified {
+		irc.Privmsg(target, fmt.Sprintf("%s: you must be identified with NickServ to use this command", nick))
+		log.Println("Nick", nick, "is not identified, and identity verification is enabled")
+		e := NickMapError("nick is not identified")
+		return &e
+	}
+	log.Println("Checking whether", user, "is a valid Last.fm user for associating with", nick)
+	// Smallest query we can do (we're only interested in errors)
+	_, err = lfm.GetUserTopArtists(user, lastfm.OneWeek, 1)
+	if err != nil {
+		extra := ""
+		lfmerr, ok := err.(*lastfm.LastFMError)
+		// lfmerr.Code is unreliable; a lot of things may be code 6...
+		if ok && lfmerr.Error() == "No user with that name" {
+			// plus their error messages are misleading...
+			extra = ", or user never scrobbled anything"
+		}
+
+		r := fmt.Sprintf("[%s] %v%s", nick, err, extra)
+		log.Println(r)
+		irc.Privmsg(target, r)
+		return err
+	}
+	m.setUser(nick, user)
+	saveNickMap()
+
+	r := fmt.Sprintf("[%s] is now associated with last.fm user %s", nick, user)
+	log.Println(r)
+	irc.Privmsg(target, r)
+	return nil
+}
+
+func (m *NickMap) DelNick(irc *client.Conn, target, nick string) (err error) {
+	if user, ok := m.GetUser(nick); !ok {
+		log.Println("Nick", nick, "asked for dissociation but isn't associated")
+		irc.Privmsg(target, fmt.Sprintf("%s: you're not associated with an username", nick))
+		e := NickMapError("nick isn't associated")
+		return &e
+	} else {
+		log.Println("Dissociating", nick, "with user", user)
+		identified := checkIdentified(irc, nick)
+		if !identified {
+			irc.Privmsg(target, fmt.Sprintf("%s: you must be identified with NickServ to use this command", nick))
+			log.Println("Nick", nick, "is not identified, and identity verification is enabled")
+			e := NickMapError("nick is not identified")
+			return &e
+		}
+		m.delUser(nick)
+		r := fmt.Sprintf("[%s] is no longer associated with last.fm user %s", nick, user)
+		log.Println(r)
+		irc.Privmsg(target, r)
+		return nil
+	}
+	panic("unreachable")
+}
+
+func (m *NickMap) QueryNick(irc *client.Conn, target, asker, nick string) {
+	r := ""
+	if user, ok := m.GetUser(nick); ok {
+		if asker == nick {
+			r = fmt.Sprintf("%s: your ", asker)
+		} else {
+			r = fmt.Sprintf("%s: %s's ", asker, nick)
+		}
+		r += fmt.Sprintf("last.fm username is %s (http://last.fm/user/%s)", user, user)
+	} else {
+		if asker == nick {
+			r = fmt.Sprintf("%s: you ", asker)
+		} else {
+			r = fmt.Sprintf("%s: %s ", asker, nick)
+		}
+		r += fmt.Sprintf("didn't associate an username")
+	}
+	irc.Privmsg(target, r)
+	return
+}
+
+func (m *NickMap) ListAllNicks(irc *client.Conn, target, asker, user string) {
+	log.Println("Listing all nicks for user", user)
+	r := ""
+	if nicks, ok := m.reverseMap[strings.ToLower(user)]; !ok || len(nicks) == 0 {
+		r = fmt.Sprintf("%s: %s has no associated IRC nick", asker, user)
+	} else {
+		plural := "s are"
+		if len(nicks) == 1 {
+			plural = " is"
+		}
+		r = fmt.Sprintf("%s: %s's known IRC nick%s %s",
+			asker, user, plural, strings.Join(sort.StringSlice(nicks), ", "))
+	}
+	log.Println(r)
+	irc.Privmsg(target, r)
+	return
+}
+
+func (m *NickMap) GetUser(nick string) (user string, ok bool) {
+	user, ok = m.nickMap[strings.ToLower(nick)]
+	if ok {
+		log.Println("Nick", nick, "is associated with", user)
+		return user, ok
+	}
+	return nick, ok
+}
+
+func (m *NickMap) setUser(nick, user string) {
+	m.nickMap[strings.ToLower(nick)] = user
+	lcuser := strings.ToLower(user)
+	if rm, ok := m.reverseMap[lcuser]; !ok {
+		m.reverseMap[lcuser] = []string{nick}
+	} else {
+		m.reverseMap[lcuser] = append(rm, nick)
+	}
+	return
+}
+func (m *NickMap) delUser(nick string) {
+	lcuser := ""
+	if user, ok := m.nickMap[strings.ToLower(nick)]; ok {
+		lcuser = strings.ToLower(user)
+	}
+	delete(m.nickMap, strings.ToLower(nick))
+
+	if rm, ok := m.reverseMap[lcuser]; ok {
+		newRm := []string{}
+		for _, n := range rm {
+			if n != nick {
+				newRm = append(newRm, n)
+			}
+		}
+		m.reverseMap[lcuser] = newRm
+	}
+}
+
+var (
+	isIdentifiedChan  = make(map[string]chan bool)
+	isIdentifiedCache = make(map[string]bool)
+)
+
+func resetIdentifiedCache() {
+	isIdentifiedCache = make(map[string]bool)
+	// We also reset the channels, in case there's any verification pending
+	for _, c := range isIdentifiedChan {
+		close(c)
+	}
+	isIdentifiedChan = make(map[string]chan bool)
+	return
+}
+
+func dropIdentifiedCache(irc *client.Conn, line *client.Line) {
+	delete(isIdentifiedCache, line.Nick)
+	return
+}
+
+func checkIdentified(irc *client.Conn, nick string) bool {
+	if !*requireAuth {
+		return true
+	}
+	// We don't cache identification failures since the user can always identify later
+	if isIdentifiedCache[nick] {
+		return true
+	}
+
+	log.Println("Checking whether", nick, "is identified")
+
+	isIdentifiedChan[nick] = make(chan bool, 1)
+	timeout := time.After(10 * time.Second)
+	go irc.Whois(nick)
+
+	r := false
+	for is, ok := false, true; ok; {
+		select {
+		case is, ok = <-isIdentifiedChan[nick]:
+			if is {
+				r = true
+			}
+		case <-timeout:
+			log.Println("Timeout checking for whether", nick, "is identified")
+			return false
+		}
+	}
+	delete(isIdentifiedChan, nick)
+
+	log.Println("Is nick", nick, "identified:", r)
+	if r {
+		isIdentifiedCache[nick] = true
+	}
+
+	return r
+}
+
+func isIdentified(irc *client.Conn, line *client.Line) {
+	nick := line.Args[1]
+	switch line.Cmd {
+	case "307", "330": // identified; 330 is the freenode version
+		isIdentifiedChan[nick] <- true
+	case "318": // end of response
+		close(isIdentifiedChan[nick])
+	}
+	return
+}
