@@ -74,21 +74,39 @@ func reportAllNowPlaying(irc *client.Conn, asker, channel string) {
 	for _ = range whoChannel[channel] { // wait until channel is closed
 	}
 	delete(whoChannel, channel)
-	log.Println("Reporting for", len(whoResult[channel]), "users in channel", channel)
-	i := 0
+
+	reportChan := make(chan bool)
+	totalReport := len(whoResult[channel]) - 1
+	msg := fmt.Sprintf("Reporting now playing for %d nicks in channel %s", totalReport, channel)
+	log.Println(msg)
+	irc.Notice(asker, msg)
+
 	for _, nick := range whoResult[channel] {
-		i++
 		if nick != irc.Me.Nick {
 			n := nick
 			go func() {
 				rateLimit <- true
-				reportNowPlaying(irc, channel, n, true)
+				reportChan <- reportNowPlaying(irc, channel, n, true)
 				<-rateLimit
 			}()
 		}
 	}
 	delete(whoResult, channel)
-	log.Println("Reported for", i-1, "users in channel", channel)
+
+	okCount, totalCount := 0, 0
+	for r := range reportChan {
+		if r {
+			okCount++
+		}
+		if totalCount++; totalCount == totalReport {
+			break
+		}
+	}
+	close(reportChan)
+
+	msg = fmt.Sprintf("Reported for %d of %d nicks", okCount, totalCount)
+	log.Println(msg)
+	irc.Notice(asker, msg)
 
 	return
 }

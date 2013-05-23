@@ -161,7 +161,7 @@ func doCompare(irc *client.Conn, target, user1, user2 string) {
 	irc.Privmsg(target, r)
 }
 
-func reportNowPlaying(irc *client.Conn, target, who string, onlyReportSuccess bool) {
+func reportNowPlaying(irc *client.Conn, target, who string, onlyReportSuccess bool) bool {
 	log.Println("Reporting Now Playing for", who, "on channel", target)
 	user, _ := nickMap.GetUser(who)
 	recent, err := lfm.GetRecentTracks(user, 1)
@@ -180,7 +180,7 @@ func reportNowPlaying(irc *client.Conn, target, who string, onlyReportSuccess bo
 		} else {
 			log.Println(r)
 		}
-		return
+		return false
 	}
 	np := recent.NowPlaying
 	if np != nil {
@@ -266,6 +266,7 @@ func reportNowPlaying(irc *client.Conn, target, who string, onlyReportSuccess bo
 		r := strings.Join(reply, " ")
 		log.Println("Reply:", r)
 		irc.Privmsg(target, r)
+		return true
 	} else if len(recent.Tracks) > 0 && !onlyReportSuccess {
 		tr := recent.Tracks[0]
 		reply := []string{
@@ -310,7 +311,7 @@ func reportNowPlaying(irc *client.Conn, target, who string, onlyReportSuccess bo
 	} else {
 		log.Printf("[%s] is not listening to anything\n", who)
 	}
-	return
+	return false
 }
 
 var sig chan os.Signal
