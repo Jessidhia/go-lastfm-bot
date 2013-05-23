@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"github.com/Kovensky/go-lastfm"
 	"github.com/fluffle/goirc/client"
+	"github.com/howeyc/fsnotify"
 	"log"
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,28 +24,75 @@ var (
 	nickFile  = flag.String("nick-file", "", `JSON file where user-nick map is stored. If blank, {{server}}.nicks.json is used.`)
 )
 
+type NickMap struct {
+	nickMap    map[string]string
+	reverseMap map[string][]string
+	beingSaved bool
+	sync.Mutex
+}
+
+func NewNickMap() *NickMap {
+	return &NickMap{
+		nickMap:    make(map[string]string),
+		reverseMap: make(map[string][]string)}
+}
+
 func loadNickMap() {
 	if *saveNicks {
 		path := *nickFile
 		if path == "" {
 			path = *server + ".nicks.json"
 		}
-		fh, err := os.Open(path)
+		log.Println("Watching", path)
+		decodeNickMap(path)
+		watcher, err := fsnotify.NewWatcher()
 		if err != nil {
-			log.Println("Error opening nick persistence file:", err)
-		} else {
-			j := json.NewDecoder(fh)
-			err = j.Decode(nickMap)
-			if err != nil {
-				log.Println("Error reading nick-user map:", err)
-			}
-			fh.Close()
+			log.Fatalln(err)
 		}
+		err = watcher.Watch(path)
+		if err != nil {
+			log.Println(err)
+		}
+		go func() {
+			var timer <-chan time.Time
+			for {
+				select {
+				case <-watcher.Event:
+					timer = time.After(time.Second)
+				case err := <-watcher.Error:
+					log.Println(err)
+				case <-timer:
+					if !nickMap.beingSaved {
+						log.Println("Nick persistence file changed, reloading...")
+						decodeNickMap(path)
+					}
+					nickMap.beingSaved = false
+					timer = nil
+				}
+			}
+		}()
 	}
+}
+
+func decodeNickMap(path string) {
+	nickMap.Lock()
+	fh, err := os.Open(path)
+	if err != nil {
+		log.Println("Error opening nick persistence file:", err)
+	} else {
+		j := json.NewDecoder(fh)
+		err = j.Decode(nickMap)
+		if err != nil {
+			log.Println("Error reading nick-user map:", err)
+		}
+		fh.Close()
+	}
+	nickMap.Unlock()
 }
 
 func saveNickMap() {
 	if *saveNicks {
+		nickMap.beingSaved = true
 		path := *nickFile
 		if path == "" {
 			path = *server + ".nicks.json"
@@ -75,17 +124,6 @@ func addNickHandlers(irc *client.Conn) {
 	irc.AddHandler("307", isIdentified)
 	irc.AddHandler("330", isIdentified)
 	irc.AddHandler("318", isIdentified)
-}
-
-type NickMap struct {
-	nickMap    map[string]string
-	reverseMap map[string][]string
-}
-
-func NewNickMap() *NickMap {
-	return &NickMap{
-		nickMap:    make(map[string]string),
-		reverseMap: make(map[string][]string)}
 }
 
 func (m *NickMap) MarshalJSON() (j []byte, err error) {
@@ -130,8 +168,10 @@ func (m *NickMap) IgnoreNick(irc *client.Conn, target, nick string) (err error) 
 		e := NickMapError("nick is not identified")
 		return &e
 	}
+	m.Lock()
 	m.setUser(nick, "")
 	saveNickMap()
+	m.Unlock()
 
 	r := fmt.Sprintf("[%s] is now ignored by last.fm commands; use %sdeluser to be unignored", nick, *cmdPrefix)
 	log.Println(r)
@@ -165,8 +205,10 @@ func (m *NickMap) AddNick(irc *client.Conn, target, nick, user string) (err erro
 		irc.Privmsg(target, r)
 		return err
 	}
+	m.Lock()
 	m.setUser(nick, user)
 	saveNickMap()
+	m.Unlock()
 
 	r := fmt.Sprintf("[%s] is now associated with last.fm user %s", nick, user)
 	log.Println(r)
@@ -189,7 +231,9 @@ func (m *NickMap) DelNick(irc *client.Conn, target, nick string) (err error) {
 			e := NickMapError("nick is not identified")
 			return &e
 		}
+		m.Lock()
 		m.delUser(nick)
+		m.Unlock()
 		r := fmt.Sprintf("[%s] is no longer associated with last.fm user %s", nick, user)
 		log.Println(r)
 		irc.Privmsg(target, r)
@@ -251,6 +295,8 @@ func (m *NickMap) ListAllNicks(irc *client.Conn, target, asker, user string) {
 }
 
 func (m *NickMap) GetUser(nick string) (user string, ok bool) {
+	m.Lock()
+	defer m.Unlock()
 	user, ok = m.nickMap[strings.ToLower(nick)]
 	if ok {
 		if user == "" {
@@ -276,6 +322,7 @@ func (m *NickMap) setUser(nick, user string) {
 	}
 	return
 }
+
 func (m *NickMap) delUser(nick string) {
 	lcuser := ""
 	if user, ok := m.nickMap[strings.ToLower(nick)]; ok {
