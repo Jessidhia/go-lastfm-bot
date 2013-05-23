@@ -260,6 +260,9 @@ func (m *NickMap) GetUser(nick string) (user string, ok bool) {
 }
 
 func (m *NickMap) setUser(nick, user string) {
+	if _, ok := m.nickMap[strings.ToLower(nick)]; ok {
+		m.delUser(nick)
+	}
 	m.nickMap[strings.ToLower(nick)] = user
 	lcuser := strings.ToLower(user)
 	if rm, ok := m.reverseMap[lcuser]; !ok {
