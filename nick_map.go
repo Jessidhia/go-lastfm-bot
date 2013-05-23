@@ -116,6 +116,24 @@ func (err *NickMapError) Error() string {
 	return string(*err)
 }
 
+func (m *NickMap) IgnoreNick(irc *client.Conn, target, nick string) (err error) {
+	log.Println("Adding", nick, "to ignored list")
+	identified := checkIdentified(irc, nick)
+	if !identified {
+		irc.Privmsg(target, fmt.Sprintf("%s: you must be identified with NickServ to use this command", nick))
+		log.Println("Nick", nick, "is not identified, and identity verification is enabled")
+		e := NickMapError("nick is not identified")
+		return &e
+	}
+	m.setUser(nick, "")
+	saveNickMap()
+
+	r := fmt.Sprintf("[%s] is now ignored by last.fm commands; use %sdeluser to be unignored", nick, *cmdPrefix)
+	log.Println(r)
+	irc.Privmsg(target, r)
+	return nil
+}
+
 func (m *NickMap) AddNick(irc *client.Conn, target, nick, user string) (err error) {
 	log.Println("Associating", nick, "with user", user)
 	identified := checkIdentified(irc, nick)
@@ -179,11 +197,21 @@ func (m *NickMap) QueryNick(irc *client.Conn, target, asker, nick string) {
 	r := ""
 	if user, ok := m.GetUser(nick); ok {
 		if asker == nick {
-			r = fmt.Sprintf("%s: your ", asker)
+			if user == "" {
+				r = fmt.Sprintf("%s: you asked to be ignored by last.fm commands", asker)
+			} else {
+				r = fmt.Sprintf("%s: your ", asker)
+			}
 		} else {
-			r = fmt.Sprintf("%s: %s's ", asker, nick)
+			if user == "" {
+				r = fmt.Sprintf("%s: %s has asked to be ignored by last.fm commands", asker, nick)
+			} else {
+				r = fmt.Sprintf("%s: %s's ", asker, nick)
+			}
 		}
-		r += fmt.Sprintf("last.fm username is %s (http://last.fm/user/%s)", user, user)
+		if user != "" {
+			r += fmt.Sprintf("last.fm username is %s (http://last.fm/user/%s)", user, user)
+		}
 	} else {
 		if asker == nick {
 			r = fmt.Sprintf("%s: you ", asker)
@@ -197,6 +225,9 @@ func (m *NickMap) QueryNick(irc *client.Conn, target, asker, nick string) {
 }
 
 func (m *NickMap) ListAllNicks(irc *client.Conn, target, asker, user string) {
+	if user == "" {
+		return
+	}
 	log.Println("Listing all nicks for user", user)
 	r := ""
 	if nicks, ok := m.reverseMap[strings.ToLower(user)]; !ok || len(nicks) == 0 {
@@ -216,7 +247,12 @@ func (m *NickMap) ListAllNicks(irc *client.Conn, target, asker, user string) {
 
 func (m *NickMap) GetUser(nick string) (user string, ok bool) {
 	user, ok = m.nickMap[strings.ToLower(nick)]
+	log.Println(user, ok)
 	if ok {
+		if user == "" {
+			log.Println("Nick", nick, "requested to be ignored")
+			return user, ok
+		}
 		log.Println("Nick", nick, "is associated with", user)
 		return user, ok
 	}

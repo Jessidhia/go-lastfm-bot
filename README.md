@@ -22,6 +22,7 @@ A nick can be used in place of a username if it's associated with a last.fm acco
 If `-require-auth` is enabled (default), the following commands require that the user
 be authenticated to nickserv:
 
+* `.ignore`: Makes the bot ignore you for most commands. Use `.setuser` or `.deluser` to be unignored.
 * `.setuser ($username)`: Associates your nick with the given last.fm `$username`.
 * `.deluser`: Removes your nick's association, if any.
 

@@ -82,6 +82,8 @@ func onPrivmsg(irc *client.Conn, line *client.Line) {
 			return
 		}
 		go nickMap.AddNick(irc, line.Args[0], line.Nick, words[1])
+	case *cmdPrefix + "ignore":
+		go nickMap.IgnoreNick(irc, line.Args[0], line.Nick)
 	case *cmdPrefix + "deluser":
 		go nickMap.DelNick(irc, line.Args[0], line.Nick)
 	case *cmdPrefix + "whois":
@@ -118,6 +120,8 @@ func sendHelp(irc *client.Conn, nick string) {
 	}
 	// There's also *cmdPrefix + "wp", but we don't document it to not encourage abuse.
 	helpStr += `
+	` + *cmdPrefix + `ignore: Makes the bot ignore you for most commands. Use ` +
+		*cmdPrefix + `setuser or ` + *cmdPrefix + `deluser to be unignored.
 	` + *cmdPrefix + `setuser ($username): Associates your nick with the given last.fm $username
 	` + *cmdPrefix + `deluser: Removes your nick's association, if any
 	` // + *cmdPrefix + `wp: Shows what's playing for everyone in the channel` // uncomment this at your peril :)
@@ -131,6 +135,9 @@ func sendHelp(irc *client.Conn, nick string) {
 func doTop5(irc *client.Conn, target string, period lastfm.Period, user string) {
 	log.Println("Listing top", period, "5 artists for", user)
 	lfmUser, _ := nickMap.GetUser(user)
+	if lfmUser == "" {
+		return
+	}
 	top5, err := lfm.GetUserTopArtists(lfmUser, period, 5)
 	if err != nil {
 		irc.Privmsg(target, fmt.Sprintf("[%s] %v", user, err))
@@ -150,6 +157,9 @@ func doCompare(irc *client.Conn, target, user1, user2 string) {
 	log.Println("Comparing", user1, "with", user2)
 	lfmUser1, _ := nickMap.GetUser(user1)
 	lfmUser2, _ := nickMap.GetUser(user2)
+	if lfmUser1 == "" || lfmUser2 == "" {
+		return
+	}
 	taste, err := lfm.CompareTaste(lfmUser1, lfmUser2)
 	if err != nil {
 		irc.Privmsg(target, fmt.Sprintf("[%s vs %s] %v", user1, user2, err))
@@ -164,6 +174,9 @@ func doCompare(irc *client.Conn, target, user1, user2 string) {
 func reportNowPlaying(irc *client.Conn, target, who string, onlyReportSuccess bool) bool {
 	log.Println("Reporting Now Playing for", who, "on channel", target)
 	user, _ := nickMap.GetUser(who)
+	if user == "" {
+		return false
+	}
 	recent, err := lfm.GetRecentTracks(user, 1)
 	if err != nil {
 		extra := ""
