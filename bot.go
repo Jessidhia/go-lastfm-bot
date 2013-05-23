@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -424,7 +425,7 @@ func main() {
 	irc.Connect(*server, *password)
 
 	sig = make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, os.Kill)
+	signal.Notify(sig, os.Interrupt, os.Kill, syscall.SIGTERM)
 	<-sig
 	quitting = true
 	log.Println("Disconnecting")
