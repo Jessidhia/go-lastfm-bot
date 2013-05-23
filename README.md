@@ -4,7 +4,9 @@ Runs a Last.fm IRC bot that replies to simple query commands.
 
 # Install
 
-Run `go get github.com/Kovensky/go-lastfm-bot`.
+Run `go get github.com/Kovensky/go-lastfm-bot` to install `go-lastfm-bot` to your `$GOPATH/bin`.
+
+Clone the repository and run `go get -v -u . && go build` to install/update dependencies and build `go-lastfm-bot` in the current directory.
 
 # IRC Commands
 
