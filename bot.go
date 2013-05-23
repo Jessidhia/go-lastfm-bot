@@ -122,9 +122,9 @@ func sendHelp(irc *client.Conn, nick string) {
 	helpStr += `
 	` + *cmdPrefix + `ignore: Makes the bot ignore you for most commands. Use ` +
 		*cmdPrefix + `setuser or ` + *cmdPrefix + `deluser to be unignored.
-	` + *cmdPrefix + `setuser ($username): Associates your nick with the given last.fm $username
-	` + *cmdPrefix + `deluser: Removes your nick's association, if any
-	` // + *cmdPrefix + `wp: Shows what's playing for everyone in the channel` // uncomment this at your peril :)
+	` + *cmdPrefix + `setuser ($username): Associates your nick with the given last.fm $username.
+	` + *cmdPrefix + `deluser: Removes your nick's association, if any.
+	` // + *cmdPrefix + `wp: Shows what's playing for everyone in the channel.` // uncomment this at your peril :)
 	for _, line := range helpSplit.Split(helpStr, -1) {
 		if line != "" {
 			irc.Notice(nick, line)
