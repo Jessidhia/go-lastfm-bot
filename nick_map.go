@@ -102,6 +102,11 @@ func (m *NickMap) MarshalJSON() (j []byte, err error) {
 func (m *NickMap) UnmarshalJSON(j []byte) (err error) {
 	data := make(map[string][]string)
 	err = json.Unmarshal(j, &data)
+	if err != nil {
+		return
+	}
+	nickMap.nickMap = make(map[string]string)
+	nickMap.reverseMap = make(map[string][]string)
 	for user, nicks := range data {
 		for _, nick := range nicks {
 			m.setUser(nick, user)
