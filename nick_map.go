@@ -247,7 +247,6 @@ func (m *NickMap) ListAllNicks(irc *client.Conn, target, asker, user string) {
 
 func (m *NickMap) GetUser(nick string) (user string, ok bool) {
 	user, ok = m.nickMap[strings.ToLower(nick)]
-	log.Println(user, ok)
 	if ok {
 		if user == "" {
 			log.Println("Nick", nick, "requested to be ignored")
