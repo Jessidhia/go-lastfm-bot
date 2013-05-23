@@ -401,7 +401,14 @@ func main() {
 		log.Println("Joined", line.Args[1])
 	})
 	irc.AddHandler("PRIVMSG", onPrivmsg)
+
+	quitting := false
+	quit := make(chan bool)
 	irc.AddHandler(client.DISCONNECTED, func(irc *client.Conn, line *client.Line) {
+		if quitting {
+			quit <- true
+			return
+		}
 		resetIdentifiedCache()
 		log.Println("Disconnected; waiting 10 seconds then reconnecting...")
 		go func() {
@@ -419,5 +426,8 @@ func main() {
 	sig = make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, os.Kill)
 	<-sig
-	log.Println("Signal received")
+	quitting = true
+	log.Println("Disconnecting")
+	irc.Quit("Exiting")
+	<-quit // wait until the QUIT is sent to server
 }
