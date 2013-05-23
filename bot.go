@@ -133,6 +133,22 @@ func sendHelp(irc *client.Conn, nick string) {
 	}
 }
 
+func onInvite(irc *client.Conn, line *client.Line) {
+	who, channel := line.Args[0], line.Args[1]
+	log.Println(line.Nick, "invited bot to", channel)
+	if who == irc.Me.Nick {
+		// some IRCds only allow operators to INVITE, and on registered channels normally only identified users are operators
+		// check anyway, since there are some corner cases where that doesn't happen
+		if checkIdentified(irc, line.Nick) {
+			log.Println("Accepting invite to", channel)
+			irc.Join(channel)
+		} else {
+			irc.Notice(line.Nick, "you must be identified to invite")
+			log.Println("Ignoring invite, user is not identified")
+		}
+	}
+}
+
 func doTop5(irc *client.Conn, target string, period lastfm.Period, user string) {
 	log.Println("Listing top", period, "5 artists for", user)
 	lfmUser, _ := nickMap.GetUser(user)
@@ -401,6 +417,7 @@ func main() {
 	irc.AddHandler("332", func(irc *client.Conn, line *client.Line) {
 		log.Println("Joined", line.Args[1])
 	})
+	irc.AddHandler("INVITE", onInvite)
 	irc.AddHandler("PRIVMSG", onPrivmsg)
 
 	quitting := false
