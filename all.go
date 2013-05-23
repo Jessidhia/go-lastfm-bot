@@ -86,7 +86,7 @@ func reportAllNowPlaying(irc *client.Conn, asker, channel string) {
 			n := nick
 			go func() {
 				rateLimit <- true
-				reportChan <- reportNowPlaying(irc, channel, n, true)
+				reportChan <- reportNowPlaying(irc, channel, asker, n, true)
 				<-rateLimit
 			}()
 		}

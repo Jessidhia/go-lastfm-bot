@@ -40,7 +40,7 @@ func onPrivmsg(irc *client.Conn, line *client.Line) {
 		if len(words) > 1 && words[1] != "" {
 			who = words[1]
 		}
-		go reportNowPlaying(irc, line.Args[0], who, false)
+		go reportNowPlaying(irc, line.Args[0], line.Nick, who, false)
 	case *cmdPrefix + "compare":
 		who := line.Nick
 		target := ""
@@ -53,7 +53,7 @@ func onPrivmsg(irc *client.Conn, line *client.Line) {
 			irc.Privmsg(line.Args[0], fmt.Sprintf("%s: tell me who to compare to!", line.Nick))
 			return
 		}
-		go doCompare(irc, line.Args[0], who, target)
+		go doCompare(irc, line.Args[0], line.Nick, who, target)
 	case *cmdPrefix + "top5":
 		who := line.Nick
 		period := lastfm.Overall
@@ -76,7 +76,7 @@ func onPrivmsg(irc *client.Conn, line *client.Line) {
 				return
 			}
 		}
-		go doTop5(irc, line.Args[0], period, who)
+		go doTop5(irc, line.Args[0], line.Nick, period, who)
 	case *cmdPrefix + "setuser":
 		if len(words) < 2 || words[1] == "" {
 			irc.Privmsg(line.Args[0], fmt.Sprintf("%s: tell the username to associate with", line.Nick))
@@ -133,6 +133,14 @@ func sendHelp(irc *client.Conn, nick string) {
 	}
 }
 
+func reportIgnored(irc *client.Conn, asker, who string) {
+	if asker == who {
+		irc.Notice(asker, "You asked to be ignored by last.fm commands")
+	} else {
+		irc.Notice(asker, fmt.Sprintf("%s asked to be ignored by last.fm commands", who))
+	}
+}
+
 func onInvite(irc *client.Conn, line *client.Line) {
 	who, channel := line.Args[0], line.Args[1]
 	log.Println(line.Nick, "invited bot to", channel)
@@ -149,10 +157,11 @@ func onInvite(irc *client.Conn, line *client.Line) {
 	}
 }
 
-func doTop5(irc *client.Conn, target string, period lastfm.Period, user string) {
+func doTop5(irc *client.Conn, target, asker string, period lastfm.Period, user string) {
 	log.Println("Listing top", period, "5 artists for", user)
 	lfmUser, _ := nickMap.GetUser(user)
 	if lfmUser == "" {
+		reportIgnored(irc, asker, user)
 		return
 	}
 	top5, err := lfm.GetUserTopArtists(lfmUser, period, 5)
@@ -170,11 +179,16 @@ func doTop5(irc *client.Conn, target string, period lastfm.Period, user string) 
 	irc.Privmsg(target, r)
 }
 
-func doCompare(irc *client.Conn, target, user1, user2 string) {
+func doCompare(irc *client.Conn, target, asker, user1, user2 string) {
 	log.Println("Comparing", user1, "with", user2)
 	lfmUser1, _ := nickMap.GetUser(user1)
 	lfmUser2, _ := nickMap.GetUser(user2)
 	if lfmUser1 == "" || lfmUser2 == "" {
+		if lfmUser1 == "" {
+			reportIgnored(irc, asker, user1)
+		} else {
+			reportIgnored(irc, asker, user2)
+		}
 		return
 	}
 	taste, err := lfm.CompareTaste(lfmUser1, lfmUser2)
@@ -188,10 +202,13 @@ func doCompare(irc *client.Conn, target, user1, user2 string) {
 	irc.Privmsg(target, r)
 }
 
-func reportNowPlaying(irc *client.Conn, target, who string, onlyReportSuccess bool) bool {
+func reportNowPlaying(irc *client.Conn, target, asker, who string, onlyReportSuccess bool) bool {
 	log.Println("Reporting Now Playing for", who, "on channel", target)
 	user, _ := nickMap.GetUser(who)
 	if user == "" {
+		if !onlyReportSuccess {
+			reportIgnored(irc, asker, who)
+		}
 		return false
 	}
 	recent, err := lfm.GetRecentTracks(user, 1)
