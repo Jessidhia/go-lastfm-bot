@@ -398,13 +398,17 @@ func checkIdentified(irc *client.Conn, nick string) bool {
 	return r
 }
 
+var isIdentifiedMutex sync.Mutex
+
 func isIdentified(irc *client.Conn, line *client.Line) {
 	nick := line.Args[1]
+	isIdentifiedMutex.Lock()
 	switch line.Cmd {
 	case "307", "330": // identified; 330 is the freenode version
 		isIdentifiedChan[nick] <- true
 	case "318": // end of response
 		close(isIdentifiedChan[nick])
 	}
+	isIdentifiedMutex.Unlock()
 	return
 }
