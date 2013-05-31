@@ -101,9 +101,7 @@ func saveNickMap() {
 		if err != nil {
 			log.Println("Error creating nick persistence file:", err)
 		} else {
-			nickMap.Lock()
 			b, err := json.MarshalIndent(nickMap, "", "\t")
-			nickMap.Unlock()
 			if err != nil {
 				log.Println("Error marshaling nick-user map:", err)
 			}
