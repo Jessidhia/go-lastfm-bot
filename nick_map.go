@@ -129,7 +129,7 @@ func addNickHandlers(irc *client.Conn) {
 func (m *NickMap) MarshalJSON() (j []byte, err error) {
 	data := make(map[string][]string)
 	for _, rm := range m.reverseMap {
-		if len(m.reverseMap) > 0 {
+		if len(rm) > 0 {
 			user := m.nickMap[strings.ToLower(rm[0])]
 			data[user] = rm
 		}
