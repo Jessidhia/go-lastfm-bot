@@ -75,19 +75,19 @@ func loadNickMap() {
 }
 
 func decodeNickMap(path string) {
-	nickMap.Lock()
 	fh, err := os.Open(path)
 	if err != nil {
 		log.Println("Error opening nick persistence file:", err)
 	} else {
+		nickMap.Lock()
 		j := json.NewDecoder(fh)
 		err = j.Decode(nickMap)
+		nickMap.Unlock()
 		if err != nil {
 			log.Println("Error reading nick-user map:", err)
 		}
 		fh.Close()
 	}
-	nickMap.Unlock()
 }
 
 func saveNickMap() {
@@ -101,7 +101,9 @@ func saveNickMap() {
 		if err != nil {
 			log.Println("Error creating nick persistence file:", err)
 		} else {
+			nickMap.Lock()
 			b, err := json.MarshalIndent(nickMap, "", "\t")
+			nickMap.Unlock()
 			if err != nil {
 				log.Println("Error marshaling nick-user map:", err)
 			}
