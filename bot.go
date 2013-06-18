@@ -287,6 +287,15 @@ func reportNowPlaying(irc *client.Conn, target, asker, who string, onlyReportSuc
 		}
 		close(c)
 
+		if ti == nil {
+			ti = &lastfm.TrackInfo{
+				Artist:        np.Artist,
+				Name:          np.Name,
+				Duration:      -1,
+				UserPlaycount: -1,
+			}
+		}
+
 		reply := []string{
 			fmt.Sprintf("[%s] np: %s - %s", who, ti.Artist.Name, ti.Name)}
 		info := []string{}
@@ -301,7 +310,7 @@ func reportNowPlaying(irc *client.Conn, target, asker, who string, onlyReportSuc
 		reply = append(reply, fmt.Sprintf("[%s]", strings.Join(info, " - ")))
 
 		tags := []string{}
-		for i := 0; i < 5 && i < len(topTags.Tags); i++ {
+		for i := 0; topTags != nil && i < 5 && i < len(topTags.Tags); i++ {
 			tags = append(tags, topTags.Tags[i].Name)
 		}
 		reply = append(reply, fmt.Sprintf("(%s)", strings.Join(tags, ", ")))
