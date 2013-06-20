@@ -180,11 +180,9 @@ func (m *NickMap) IgnoreNick(irc *client.Conn, target, nick string) (err error) 
 }
 
 func (m *NickMap) AddNick(irc *client.Conn, target, nick, user string) (err error) {
-	log.Println("Associating", nick, "with user", user)
 	identified := checkIdentified(irc, nick)
 	if !identified {
 		irc.Privmsg(target, fmt.Sprintf("%s: you must be identified with NickServ to use this command", nick))
-		log.Println("Nick", nick, "is not identified, and identity verification is enabled")
 		e := NickMapError("nick is not identified")
 		return &e
 	}
@@ -218,12 +216,10 @@ func (m *NickMap) AddNick(irc *client.Conn, target, nick, user string) (err erro
 
 func (m *NickMap) DelNick(irc *client.Conn, target, nick string) (err error) {
 	if user, ok := m.GetUser(nick); !ok {
-		log.Println("Nick", nick, "asked for dissociation but isn't associated")
 		irc.Privmsg(target, fmt.Sprintf("%s: you're not associated with an username", nick))
 		e := NickMapError("nick isn't associated")
 		return &e
 	} else {
-		log.Println("Dissociating", nick, "with user", user)
 		identified := checkIdentified(irc, nick)
 		if !identified {
 			irc.Privmsg(target, fmt.Sprintf("%s: you must be identified with NickServ to use this command", nick))
@@ -277,7 +273,6 @@ func (m *NickMap) ListAllNicks(irc *client.Conn, target, asker, user string) {
 	if user == "" {
 		return
 	}
-	log.Println("Listing all nicks for user", user)
 	r := ""
 	if nicks, ok := m.reverseMap[strings.ToLower(user)]; !ok || len(nicks) == 0 {
 		r = fmt.Sprintf("%s: %s has no associated IRC nick", asker, user)
