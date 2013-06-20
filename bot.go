@@ -25,7 +25,7 @@ var (
 	channelList = flag.String("channels", "", `Comma-separated list of channels to join on the server. Required`)
 	apiKey      = flag.String("api-key", "", `The Last.fm API key. Required.`)
 	cmdPrefix   = flag.String("cmd-prefix", ".", `The prefix to user commands.`)
-	cacheFile   = flag.String("cache-file", "", `File used to persist the last.fm API cache. If blank, the cache is only kept in memory.`)
+	cacheFile   = flag.String("cache-file", "", `File used to persist the last.fm API cache. If blank, the cache is only kept in memory. Not multiprocess safe.`)
 	lfm         lastfm.LastFM
 	nickMap     = NewNickMap()
 	cacheTimer  *time.Timer

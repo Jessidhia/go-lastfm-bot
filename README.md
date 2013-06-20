@@ -43,6 +43,7 @@ This command is shown in the .help output to help avoid abuse by random people:
 
 * `-cmd-prefix="."`: The prefix to user commands.
 
+* `-cache-file=""`: File used to persist the last.fm API cache. If blank, the cache is only kept in memory. Not multiprocess safe.
 * `-save-nicks=true`: Whether to persist the user-nick mappings
 * `-nick-file=""`: JSON file where user-nick map is stored. If blank, `{{server}}.nicks.json` is used.
 * `-require-auth=true`: Requires that nicknames be authenticated for using the user/nick mapping. Disable on networks that don't implement a NickServ, such as EFNet.
