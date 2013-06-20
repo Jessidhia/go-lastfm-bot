@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/zlib"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -24,8 +25,10 @@ var (
 	channelList = flag.String("channels", "", `Comma-separated list of channels to join on the server. Required`)
 	apiKey      = flag.String("api-key", "", `The Last.fm API key. Required.`)
 	cmdPrefix   = flag.String("cmd-prefix", ".", `The prefix to user commands.`)
+	cacheFile   = flag.String("cache-file", "", `File used to persist the last.fm API cache. If blank, the cache is only kept in memory.`)
 	lfm         lastfm.LastFM
 	nickMap     = NewNickMap()
+	cacheTimer  *time.Timer
 )
 
 var whitespace = regexp.MustCompile(`\s+`)
@@ -177,6 +180,7 @@ func doTop5(irc *client.Conn, target, asker string, period lastfm.Period, user s
 		user, period, strings.Join(artists, ", "))
 	log.Println("Reply:", r)
 	irc.Privmsg(target, r)
+	saveCache()
 }
 
 func doCompare(irc *client.Conn, target, asker, user1, user2 string) {
@@ -200,6 +204,7 @@ func doCompare(irc *client.Conn, target, asker, user1, user2 string) {
 		user1, user2, taste.Score*100, strings.Join(taste.Artists, ", "))
 	log.Println("Reply:", r)
 	irc.Privmsg(target, r)
+	saveCache()
 }
 
 func reportNowPlaying(irc *client.Conn, target, asker, who string, onlyReportSuccess bool) bool {
@@ -227,6 +232,7 @@ func reportNowPlaying(irc *client.Conn, target, asker, who string, onlyReportSuc
 		} else {
 			log.Println(r)
 		}
+		saveCache()
 		return false
 	}
 	np := recent.NowPlaying
@@ -322,6 +328,7 @@ func reportNowPlaying(irc *client.Conn, target, asker, who string, onlyReportSuc
 		r := strings.Join(reply, " ")
 		log.Println("Reply:", r)
 		irc.Privmsg(target, r)
+		saveCache()
 		return true
 	} else if len(recent.Tracks) > 0 && !onlyReportSuccess {
 		tr := recent.Tracks[0]
@@ -367,6 +374,7 @@ func reportNowPlaying(irc *client.Conn, target, asker, who string, onlyReportSuc
 	} else {
 		log.Printf("[%s] is not listening to anything\n", who)
 	}
+	saveCache()
 	return false
 }
 
@@ -379,6 +387,25 @@ func main() {
 	}
 	lfm = lastfm.New(*apiKey)
 	loadNickMap()
+	loadCache()
+
+	cacheCleaner := time.Tick(time.Hour)
+	go func() {
+		for _ = range cacheCleaner {
+			cleanCache()
+		}
+	}()
+	if *cacheFile != "" {
+		cleanCache()
+
+		cacheTimer = time.NewTimer(time.Hour)
+		cacheTimer.Stop()
+		go func() {
+			for _ = range cacheTimer.C {
+				saveCacheNow()
+			}
+		}()
+	}
 
 	if *server == "" {
 		log.Fatalln("No server to connect to")
@@ -455,6 +482,7 @@ func main() {
 		}
 		resetIdentifiedCache()
 		log.Println("Disconnected; waiting 10 seconds then reconnecting...")
+		saveCacheNow()
 		go func() {
 			time.Sleep(10 * time.Second)
 			log.Println("Reconnecting...")
@@ -473,5 +501,64 @@ func main() {
 	quitting = true
 	log.Println("Disconnecting")
 	irc.Quit("Exiting")
+	saveCacheNow()
 	<-quit // wait until the QUIT is sent to server
+}
+
+func loadCache() {
+	if *cacheFile != "" {
+		if fh, err := os.Open(*cacheFile); err != nil {
+			log.Println("Error opening cache file:", err)
+		} else {
+			defer fh.Close()
+			zr, _ := zlib.NewReader(fh)
+			if err = lfm.Cache.Load(zr); err != nil {
+				log.Println("Error reading cache file:", err)
+			} else {
+				log.Println("Loaded", lfm.Cache.Len(), "cache entries")
+			}
+			zr.Close()
+		}
+	}
+}
+
+func saveCache() {
+	if *cacheFile != "" {
+		cacheTimer.Reset(10 * time.Second)
+	}
+}
+
+func saveCacheNow() {
+	if *cacheFile != "" {
+		if fh, err := os.Create(*cacheFile); err != nil {
+			log.Printf("Error creating cache file:", err)
+		} else {
+			defer fh.Close()
+			zw, _ := zlib.NewWriterLevel(fh, zlib.BestCompression)
+			if err = lfm.Cache.Store(zw); err != nil {
+				log.Println("Error storing cache:", err)
+			} else {
+				log.Println("Cache saved with", lfm.Cache.Len(), "entries")
+			}
+			zw.Close()
+		}
+	}
+}
+
+func cleanCache() {
+	// postpone the cacheTimer if it's running
+	if cacheTimer != nil && cacheTimer.Stop() {
+		cacheTimer.Reset(10 * time.Second)
+	}
+
+	n := lfm.Cache.Clean()
+	if n > 0 {
+		log.Println("Cache: cleaned", n, "stale entries")
+	}
+
+	hr := lfm.Cache.HitRate(true)
+	if hr == hr { // !NaN
+		log.Printf("Hourly cache stats: %v entries, %.1f%% hit rate\n", lfm.Cache.Len(), 100*hr)
+	}
+	lfm.Cache.ResetStats()
 }
