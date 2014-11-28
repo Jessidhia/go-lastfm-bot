@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lfm status="ok">
+<track>
+    <id>651481384</id>
+    <name>Motherboard</name>
+            <mbid>762e120f-6d52-4fae-a796-699ae0a0ea9f</mbid>
+            <url>http://www.last.fm/music/Daft+Punk/_/Motherboard</url>
+    <duration>326000</duration>
+    <streamable fulltrack="0">0</streamable>    
+        <listeners>26239</listeners>
+    <playcount>54240</playcount>
+        <userplaycount>64</userplaycount>    <userloved>1</userloved>
+        <artist>
+        <name>Daft Punk</name>
+                <mbid>056e4f3e-d505-4dad-8ec1-d04f521cbb56</mbid>
+                    <url>http://www.last.fm/music/Daft+Punk</url>
+    </artist>
+        <album position="10">
+        <artist>Daft Punk</artist>
+        <title>Random Access Memories</title>
+                <mbid>95fefca0-4c4c-4619-a19d-2e183989b5c4</mbid>
+                    <url>http://www.last.fm/music/Daft+Punk/Random+Access+Memories</url>        
+        <image size="small">http://userserve-ak.last.fm/serve/64s/88137413.png</image>
+        <image size="medium">http://userserve-ak.last.fm/serve/126/88137413.png</image>
+        <image size="large">http://userserve-ak.last.fm/serve/174s/88137413.png</image>
+        <image size="extralarge">http://userserve-ak.last.fm/serve/300x300/88137413.png</image>
+    </album>
+        <toptags>
+      </toptags>
+    </track></lfm>

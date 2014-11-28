@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lfm status="ok">
+<toptags artist="Daft Punk" track="One More Time">
+    <tag>
+    <name>electronic</name> 
+    <count>100</count>
+    <url>http://www.last.fm/tag/electronic</url>
+</tag>    <tag>
+    <name>dance</name> 
+    <count>91</count>
+    <url>http://www.last.fm/tag/dance</url>
+</tag>    <tag>
+    <name>House</name> 
+    <count>60</count>
+    <url>http://www.last.fm/tag/house</url>
+</tag>    <tag>
+    <name>electronica</name> 
+    <count>40</count>
+    <url>http://www.last.fm/tag/electronica</url>
+</tag>    <tag>
+    <name>techno</name> 
+    <count>33</count>
+    <url>http://www.last.fm/tag/techno</url>
+</tag>    <tag>
+    <name>Daft Punk</name> 
+    <count>22</count>
+    <url>http://www.last.fm/tag/daft%20punk</url>
+</tag>    <tag>
+    <name>french</name> 
+    <count>16</count>
+    <url>http://www.last.fm/tag/french</url>
+</tag>    <tag>
+    <name>party</name> 
+    <count>13</count>
+    <url>http://www.last.fm/tag/party</url>
+</tag>    <tag>
+    <name>electro</name> 
+    <count>11</count>
+    <url>http://www.last.fm/tag/electro</url>
+</tag>    <tag>
+    <name>french house</name> 
+    <count>9</count>
+    <url>http://www.last.fm/tag/french%20house</url>
+</tag>    <tag>
+    <name>pop</name> 
+    <count>9</count>
+    <url>http://www.last.fm/tag/pop</url>
+</tag>    <tag>
+    <name>club</name> 
+    <count>7</count>
+    <url>http://www.last.fm/tag/club</url>
+</tag>    <tag>
+    <name>00s</name> 
+    <count>6</count>
+    <url>http://www.last.fm/tag/00s</url>
+</tag>    <tag>
+    <name>one more time</name> 
+    <count>5</count>
+    <url>http://www.last.fm/tag/one%20more%20time</url>
+</tag>    <tag>
+    <name>Disco</name> 
+    <count>4</count>
+    <url>http://www.last.fm/tag/disco</url>
+</tag>    <tag>
+    <name>90s</name> 
+    <count>3</count>
+    <url>http://www.last.fm/tag/90s</url>
+</tag>    <tag>
+    <name>favorites</name> 
+    <count>3</count>
+    <url>http://www.last.fm/tag/favorites</url>
+</tag>    <tag>
+    <name>alternative</name> 
+    <count>3</count>
+    <url>http://www.last.fm/tag/alternative</url>
+</tag>    <tag>
+    <name>france</name> 
+    <count>3</count>
+    <url>http://www.last.fm/tag/france</url>
+</tag>    <tag>
+    <name>happy</name> 
+    <count>3</count>
+    <url>http://www.last.fm/tag/happy</url>
+</tag>    <tag>
+    <name>synthpop</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/synthpop</url>
+</tag>    <tag>
+    <name>2001</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/2001</url>
+</tag>    <tag>
+    <name>energy</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/energy</url>
+</tag>    <tag>
+    <name>funk</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/funk</url>
+</tag>    <tag>
+    <name>fun</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/fun</url>
+</tag>    <tag>
+    <name>DIsco House</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/disco%20house</url>
+</tag>    <tag>
+    <name>funky</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/funky</url>
+</tag>    <tag>
+    <name>classic</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/classic</url>
+</tag>    <tag>
+    <name>catchy</name> 
+    <count>2</count>
+    <url>http://www.last.fm/tag/catchy</url>
+</tag>    <tag>
+    <name>Awesome</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/awesome</url>
+</tag>    <tag>
+    <name>Love</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/love</url>
+</tag>    <tag>
+    <name>upbeat</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/upbeat</url>
+</tag>    <tag>
+    <name>electropop</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/electropop</url>
+</tag>    <tag>
+    <name>cool</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/cool</url>
+</tag>    <tag>
+    <name>male vocalists</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/male%20vocalists</url>
+</tag>    <tag>
+    <name>favorite songs</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/favorite%20songs</url>
+</tag>    <tag>
+    <name>trance</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/trance</url>
+</tag>    <tag>
+    <name>groove</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/groove</url>
+</tag>    <tag>
+    <name>chillout</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/chillout</url>
+</tag>    <tag>
+    <name>Uplifting</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/uplifting</url>
+</tag>    <tag>
+    <name>Progressive House</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/progressive%20house</url>
+</tag>    <tag>
+    <name>Energetic</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/energetic</url>
+</tag>    <tag>
+    <name>rock</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/rock</url>
+</tag>    <tag>
+    <name>vocoder</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/vocoder</url>
+</tag>    <tag>
+    <name>makes me want to dance</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/makes%20me%20want%20to%20dance</url>
+</tag>    <tag>
+    <name>zyrotechira</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/zyrotechira</url>
+</tag>    <tag>
+    <name>french touch</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/french%20touch</url>
+</tag>    <tag>
+    <name>chill</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/chill</url>
+</tag>    <tag>
+    <name>celebrate</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/celebrate</url>
+</tag>    <tag>
+    <name>memories</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/memories</url>
+</tag>    <tag>
+    <name>groovy</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/groovy</url>
+</tag>    <tag>
+    <name>summer</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/summer</url>
+</tag>    <tag>
+    <name>club-dance</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/club-dance</url>
+</tag>    <tag>
+    <name>amazing</name> 
+    <count>1</count>
+    <url>http://www.last.fm/tag/amazing</url>
+</tag>    <tag>
+    <name>anime</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/anime</url>
+</tag>    <tag>
+    <name>Discovery</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/discovery</url>
+</tag>    <tag>
+    <name>hi- vids</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/hi-%20vids</url>
+</tag>    <tag>
+    <name>electro house</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/electro%20house</url>
+</tag>    <tag>
+    <name>loved</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/loved</url>
+</tag>    <tag>
+    <name>dj delberts dorky dance drops</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/dj%20delberts%20dorky%20dance%20drops</url>
+</tag>    <tag>
+    <name>dance baby dance</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/dance%20baby%20dance</url>
+</tag>    <tag>
+    <name>sufu5a</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/sufu5a</url>
+</tag>    <tag>
+    <name>indie</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/indie</url>
+</tag>    <tag>
+    <name>beautiful</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/beautiful</url>
+</tag>    <tag>
+    <name>a repetitive chorus</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/a%20repetitive%20chorus</url>
+</tag>    <tag>
+    <name>i am a party girl here is my soundtrack</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/i%20am%20a%20party%20girl%20here%20is%20my%20soundtrack</url>
+</tag>    <tag>
+    <name>wkqi-fm</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/wkqi-fm</url>
+</tag>    <tag>
+    <name>One</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/one</url>
+</tag>    <tag>
+    <name>minimalist arrangements</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/minimalist%20arrangements</url>
+</tag>    <tag>
+    <name>nice</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/nice</url>
+</tag>    <tag>
+    <name>horn riffs</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/horn%20riffs</url>
+</tag>    <tag>
+    <name>upbeat lyrics</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/upbeat%20lyrics</url>
+</tag>    <tag>
+    <name>busy beats</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/busy%20beats</url>
+</tag>    <tag>
+    <name>club house</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/club%20house</url>
+</tag>    <tag>
+    <name>party music</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/party%20music</url>
+</tag>    <tag>
+    <name>funky house</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/funky%20house</url>
+</tag>    <tag>
+    <name>daft punk- one more time</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/daft%20punk-%20one%20more%20time</url>
+</tag>    <tag>
+    <name>a wet recording sound</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/a%20wet%20recording%20sound</url>
+</tag>    <tag>
+    <name>left-field house</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/left-field%20house</url>
+</tag>    <tag>
+    <name>big beat</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/big%20beat</url>
+</tag>    <tag>
+    <name>happiness</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/happiness</url>
+</tag>    <tag>
+    <name>House Society</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/house%20society</url>
+</tag>    <tag>
+    <name>Daft Punk - One more Time</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/daft%20punk%20-%20one%20more%20time</url>
+</tag>    <tag>
+    <name>an altered male vocal</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/an%20altered%20male%20vocal</url>
+</tag>    <tag>
+    <name>melodic part writing</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/melodic%20part%20writing</url>
+</tag>    <tag>
+    <name>european</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/european</url>
+</tag>    <tag>
+    <name>vocal house</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/vocal%20house</url>
+</tag>    <tag>
+    <name>disco influences</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/disco%20influences</url>
+</tag>    <tag>
+    <name>Good Stuff</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/good%20stuff</url>
+</tag>    <tag>
+    <name>Daft Punk One more Time</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/daft%20punk%20one%20more%20time</url>
+</tag>    <tag>
+    <name>danceable</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/danceable</url>
+</tag>    <tag>
+    <name>Prominent Horns</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/prominent%20horns</url>
+</tag>    <tag>
+    <name>dance dance</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/dance%20dance</url>
+</tag>    <tag>
+    <name>favourite</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/favourite</url>
+</tag>    <tag>
+    <name>top 40</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/top%2040</url>
+</tag>    <tag>
+    <name>synth riffs</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/synth%20riffs</url>
+</tag>    <tag>
+    <name>big dance beat</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/big%20dance%20beat</url>
+</tag>    <tag>
+    <name>vocal progessive house</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/vocal%20progessive%20house</url>
+</tag>    <tag>
+    <name>electro dance beat</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/electro%20dance%20beat</url>
+</tag>    <tag>
+    <name>other</name> 
+    <count>0</count>
+    <url>http://www.last.fm/tag/other</url>
+</tag></toptags></lfm>

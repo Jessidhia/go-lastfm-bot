@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lfm status="ok">
+<recenttracks user="Kovensky" page="1" perPage="1" totalPages="39679" total="39679" >
+<track nowplaying="true"> 
+         
+    <artist>
+        <name>Daft Punk</name>
+                <mbid>056e4f3e-d505-4dad-8ec1-d04f521cbb56</mbid>
+            <url>Daft Punk</url>
+        <image size="small">http://userserve-ak.last.fm/serve/34/88565431.png</image> 
+        <image size="medium">http://userserve-ak.last.fm/serve/64/88565431.png</image>
+        <image size="large">http://userserve-ak.last.fm/serve/126/88565431.png</image>
+        <image size="extralarge">http://userserve-ak.last.fm/serve/252/88565431.png</image>
+    </artist>
+    <loved>1</loved>
+<name>Aerodynamic</name>
+<streamable>0</streamable>
+        <mbid>29b45fae-fc32-43c0-ab74-052842458315</mbid>
+            <album mbid="8343b377-ea18-4d64-b5f6-ffaf55d8f55b">Discovery</album>
+    <url>http://www.last.fm/music/Daft+Punk/_/Aerodynamic</url>
+    <image size="small">http://userserve-ak.last.fm/serve/34s/66072700.png</image>
+    <image size="medium">http://userserve-ak.last.fm/serve/64s/66072700.png</image>
+    <image size="large">http://userserve-ak.last.fm/serve/126/66072700.png</image>
+    <image size="extralarge">http://userserve-ak.last.fm/serve/300x300/66072700.png</image>
+</track>
+<track> 
+             
+    <artist>
+        <name>Daft Punk</name>
+                <mbid>056e4f3e-d505-4dad-8ec1-d04f521cbb56</mbid>
+            <url>Daft Punk</url>
+        <image size="small">http://userserve-ak.last.fm/serve/34/88565431.png</image> 
+        <image size="medium">http://userserve-ak.last.fm/serve/64/88565431.png</image>
+        <image size="large">http://userserve-ak.last.fm/serve/126/88565431.png</image>
+        <image size="extralarge">http://userserve-ak.last.fm/serve/252/88565431.png</image>
+    </artist>
+    <loved>1</loved>
+<name>Motherboard</name>
+<streamable>0</streamable>
+        <mbid>762e120f-6d52-4fae-a796-699ae0a0ea9f</mbid>
+            <album mbid="95fefca0-4c4c-4619-a19d-2e183989b5c4">Random Access Memories</album>
+    <url>http://www.last.fm/music/Daft+Punk/_/Motherboard</url>
+    <image size="small">http://userserve-ak.last.fm/serve/34s/88137413.png</image>
+    <image size="medium">http://userserve-ak.last.fm/serve/64s/88137413.png</image>
+    <image size="large">http://userserve-ak.last.fm/serve/126/88137413.png</image>
+    <image size="extralarge">http://userserve-ak.last.fm/serve/300x300/88137413.png</image>
+        <date uts="1368900185">18 May 2013, 18:03</date>
+</track>
+</recenttracks></lfm>

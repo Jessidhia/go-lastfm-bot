@@ -1,0 +1,35 @@
+{
+	"ImportPath": "github.com/Kovensky/go-lastfm-bot",
+	"GoVersion": "go1.2.1",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/gomock/gomock",
+			"Rev": "5d0b59c9f277f888d2c70b00908236a30ab90f45"
+		},
+		{
+			"ImportPath": "github.com/Kovensky/go-lastfm",
+			"Rev": "90d44f39023da4d964f05af118512a57ca70d2d2"
+		},
+		{
+			"ImportPath": "github.com/fluffle/goevent/event",
+			"Rev": "972f9141f4868fad5cd0704bb998b56b18742133"
+		},
+		{
+			"ImportPath": "github.com/fluffle/goirc/client",
+			"Rev": "7923e280912752ebfda045cc68cbfb82cf5dd016"
+		},
+		{
+			"ImportPath": "github.com/fluffle/goirc/state",
+			"Rev": "7923e280912752ebfda045cc68cbfb82cf5dd016"
+		},
+		{
+			"ImportPath": "github.com/fluffle/golog/logging",
+			"Rev": "0fad4c8c24e6827252a9ea621274adeb67e17182"
+		},
+		{
+			"ImportPath": "github.com/howeyc/fsnotify",
+			"Comment": "v0.9.0-11-g6b1ef89",
+			"Rev": "6b1ef893dc11e0447abda6da20a5203481878dda"
+		}
+	]
+}

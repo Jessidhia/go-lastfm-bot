@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lfm status="ok">
+    <comparison>
+        <result>
+            <score>0.9077011346817</score>
+            <artists matches="10">
+                <artist>
+                    <name>DIR EN GREY</name>
+                    <url>http://www.last.fm/music/DIR+EN+GREY</url>
+                    <image size="large">http://userserve-ak.last.fm/serve/126/74563356.png</image>
+                    <image size="medium">http://userserve-ak.last.fm/serve/64/74563356.png</image>
+                    <image size="small">http://userserve-ak.last.fm/serve/34/74563356.png</image>
+                    <image size="extralarge">http://userserve-ak.last.fm/serve/252/74563356.png</image>
+                </artist>
+                <artist>
+                    <name>exist†trace</name>
+                    <url>http://www.last.fm/music/exist%E2%80%A0trace</url>
+                    <image size="large">http://userserve-ak.last.fm/serve/126/54125657.jpg</image>
+                    <image size="medium">http://userserve-ak.last.fm/serve/64/54125657.jpg</image>
+                    <image size="small">http://userserve-ak.last.fm/serve/34/54125657.jpg</image>
+                    <image size="extralarge">http://userserve-ak.last.fm/serve/252/54125657.jpg</image>
+                </artist>
+                <artist>
+                    <name>Aldious</name>
+                    <url>http://www.last.fm/music/Aldious</url>
+                    <image size="large">http://userserve-ak.last.fm/serve/126/80641697.png</image>
+                    <image size="medium">http://userserve-ak.last.fm/serve/64/80641697.png</image>
+                    <image size="small">http://userserve-ak.last.fm/serve/34/80641697.png</image>
+                    <image size="extralarge">http://userserve-ak.last.fm/serve/252/80641697.png</image>
+                </artist>
+                <artist>
+                    <name>Boom Boom Satellites</name>
+                    <url>http://www.last.fm/music/Boom+Boom+Satellites</url>
+                    <image size="large">http://userserve-ak.last.fm/serve/126/72377434.png</image>
+                    <image size="medium">http://userserve-ak.last.fm/serve/64/72377434.png</image>
+                    <image size="small">http://userserve-ak.last.fm/serve/34/72377434.png</image>
+                    <image size="extralarge">http://userserve-ak.last.fm/serve/252/72377434.png</image>
+                </artist>
+                <artist>
+                    <name>Eluveitie</name>
+                    <url>http://www.last.fm/music/Eluveitie</url>
+                    <image size="large">http://userserve-ak.last.fm/serve/126/23089827.jpg</image>
+                    <image size="medium">http://userserve-ak.last.fm/serve/64/23089827.jpg</image>
+                    <image size="small">http://userserve-ak.last.fm/serve/34/23089827.jpg</image>
+                    <image size="extralarge">http://userserve-ak.last.fm/serve/252/23089827.jpg</image>
+                </artist>
+            </artists>
+        </result>
+        <input>
+            <user>
+                <name>Kovensky</name>
+                <url>http://www.last.fm/user/Kovensky</url>
+                <image size="large">http://userserve-ak.last.fm/serve/126/59794117.jpg</image>
+                <image size="medium">http://userserve-ak.last.fm/serve/64/59794117.jpg</image>
+                <image size="small">http://userserve-ak.last.fm/serve/34/59794117.jpg</image>
+                <image size="extralarge">http://userserve-ak.last.fm/serve/252/59794117.jpg</image>
+            </user>
+            <user>
+                <name>D4RK-PH0ENiX</name>
+                <url>http://www.last.fm/user/D4RK-PH0ENiX</url>
+                <image size="large">http://userserve-ak.last.fm/serve/126/31359691.png</image>
+                <image size="medium">http://userserve-ak.last.fm/serve/64/31359691.png</image>
+                <image size="small">http://userserve-ak.last.fm/serve/34/31359691.png</image>
+                <image size="extralarge">http://userserve-ak.last.fm/serve/252/31359691.png</image>
+            </user>
+        </input>
+    </comparison></lfm>
