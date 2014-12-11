@@ -4,11 +4,11 @@
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/gomock/gomock",
-			"Rev": "5d0b59c9f277f888d2c70b00908236a30ab90f45"
+			"Rev": "e033c7513ca3d743bbb64df299bdec29e93fed03"
 		},
 		{
 			"ImportPath": "github.com/Kovensky/go-lastfm",
-			"Rev": "90d44f39023da4d964f05af118512a57ca70d2d2"
+			"Rev": "7ccdb011bc8c19585b8047ddae55e3f7e9268df4"
 		},
 		{
 			"ImportPath": "github.com/fluffle/goevent/event",
@@ -16,11 +16,11 @@
 		},
 		{
 			"ImportPath": "github.com/fluffle/goirc/client",
-			"Rev": "7923e280912752ebfda045cc68cbfb82cf5dd016"
+			"Rev": "0f3cbf87fe792457f53caefa7f50cd0e6e38240f"
 		},
 		{
 			"ImportPath": "github.com/fluffle/goirc/state",
-			"Rev": "7923e280912752ebfda045cc68cbfb82cf5dd016"
+			"Rev": "0f3cbf87fe792457f53caefa7f50cd0e6e38240f"
 		},
 		{
 			"ImportPath": "github.com/fluffle/golog/logging",

@@ -9,19 +9,12 @@ import (
 	"time"
 )
 
-const (
-	mockReadCloser = iota
-	mockInCloser
-	mockOutCloser
-)
-
 type mockNetConn struct {
 	*testing.T
 
 	In, Out chan string
 	in, out chan []byte
-	closers [3]chan bool
-	rc      chan bool
+	die     chan struct{}
 
 	closed bool
 	rt, wt time.Time
@@ -29,16 +22,15 @@ type mockNetConn struct {
 
 func MockNetConn(t *testing.T) *mockNetConn {
 	// Our mock connection is a testing object
-	m := &mockNetConn{T: t}
+	m := &mockNetConn{T: t, die: make(chan struct{})}
 
 	// buffer input
 	m.In = make(chan string, 20)
 	m.in = make(chan []byte)
-	m.closers[mockInCloser] = make(chan bool, 1)
 	go func() {
 		for {
 			select {
-			case <-m.closers[mockInCloser]:
+			case <-m.die:
 				return
 			case s := <-m.In:
 				m.in <- []byte(s)
@@ -49,20 +41,16 @@ func MockNetConn(t *testing.T) *mockNetConn {
 	// buffer output
 	m.Out = make(chan string)
 	m.out = make(chan []byte, 20)
-	m.closers[mockOutCloser] = make(chan bool, 1)
 	go func() {
 		for {
 			select {
-			case <-m.closers[mockOutCloser]:
+			case <-m.die:
 				return
 			case b := <-m.out:
 				m.Out <- string(b)
 			}
 		}
 	}()
-
-	// Set up channel to force EOF to Read() on close.
-	m.closers[mockReadCloser] = make(chan bool, 1)
 
 	return m
 }
@@ -74,7 +62,7 @@ func (m *mockNetConn) Send(s string) {
 
 func (m *mockNetConn) Expect(e string) {
 	select {
-	case <-time.After(1e6):
+	case <-time.After(time.Millisecond):
 		m.Errorf("Mock connection did not receive expected output.\n\t"+
 			"Expected: '%s', got nothing.", e)
 	case s := <-m.Out:
@@ -88,7 +76,7 @@ func (m *mockNetConn) Expect(e string) {
 
 func (m *mockNetConn) ExpectNothing() {
 	select {
-	case <-time.After(1e6):
+	case <-time.After(time.Millisecond):
 	case s := <-m.Out:
 		s = strings.Trim(s, "\r\n")
 		m.Errorf("Mock connection received unexpected output.\n\t"+
@@ -98,7 +86,7 @@ func (m *mockNetConn) ExpectNothing() {
 
 // Implement net.Conn interface
 func (m *mockNetConn) Read(b []byte) (int, error) {
-	if m.closed {
+	if m.Closed() {
 		return 0, os.ErrInvalid
 	}
 	l := 0
@@ -106,14 +94,14 @@ func (m *mockNetConn) Read(b []byte) (int, error) {
 	case s := <-m.in:
 		l = len(s)
 		copy(b, s)
-	case <-m.closers[mockReadCloser]:
+	case <-m.die:
 		return 0, io.EOF
 	}
 	return l, nil
 }
 
 func (m *mockNetConn) Write(s []byte) (int, error) {
-	if m.closed {
+	if m.Closed() {
 		return 0, os.ErrInvalid
 	}
 	b := make([]byte, len(s))
@@ -123,24 +111,30 @@ func (m *mockNetConn) Write(s []byte) (int, error) {
 }
 
 func (m *mockNetConn) Close() error {
-	if m.closed {
+	if m.Closed() {
 		return os.ErrInvalid
 	}
 	// Shut down *ALL* the goroutines!
 	// This will trigger an EOF event in Read() too
-	for _, c := range m.closers {
-		c <- true
-	}
-	m.closed = true
+	close(m.die)
 	return nil
 }
 
+func (m *mockNetConn) Closed() bool {
+	select {
+	case <-m.die:
+		return true
+	default:
+		return false
+	}
+}
+
 func (m *mockNetConn) LocalAddr() net.Addr {
-	return &net.IPAddr{net.IPv4(127, 0, 0, 1)}
+	return &net.IPAddr{IP: net.IPv4(127, 0, 0, 1)}
 }
 
 func (m *mockNetConn) RemoteAddr() net.Addr {
-	return &net.IPAddr{net.IPv4(127, 0, 0, 1)}
+	return &net.IPAddr{IP: net.IPv4(127, 0, 0, 1)}
 }
 
 func (m *mockNetConn) SetDeadline(t time.Time) error {

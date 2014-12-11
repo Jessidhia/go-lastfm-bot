@@ -147,7 +147,7 @@ func reportIgnored(irc *client.Conn, asker, who string) {
 func onInvite(irc *client.Conn, line *client.Line) {
 	who, channel := line.Args[0], line.Args[1]
 	log.Println(line.Nick, "invited bot to", channel)
-	if who == irc.Me.Nick {
+	if who == irc.Me().Nick {
 		// some IRCds only allow operators to INVITE, and on registered channels normally only identified users are operators
 		// check anyway, since there are some corner cases where that doesn't happen
 		if checkIdentified(irc, line.Nick) {
@@ -414,19 +414,22 @@ func main() {
 		log.Fatalln("No channels to join")
 	}
 
-	irc := client.SimpleClient(*botNick)
-	irc.SSL = *useSSL
-	irc.Flood = false
+	config := client.NewConfig(*botNick)
+	config.Version = "github.com/Kovensky/go-lastfm-bot"
+	config.SSL = *useSSL
+	config.Flood = false
 
 	// TODO: CA management?
-	irc.SSLConfig = &tls.Config{InsecureSkipVerify: true}
+	config.SSLConfig = &tls.Config{InsecureSkipVerify: true}
+
+	irc := client.Client(config)
 
 	addNickHandlers(irc)
 	addWhoHandlers(irc)
 
-	irc.AddHandler(client.CONNECTED, func(irc *client.Conn, line *client.Line) {
+	irc.HandleFunc(client.CONNECTED, func(irc *client.Conn, line *client.Line) {
 		if *nickPass != "" {
-			if irc.Me.Nick != *botNick {
+			if irc.Me().Nick != *botNick {
 				log.Println("Nick", *botNick, "was not available; trying to retake it")
 				irc.Privmsg("NickServ", fmt.Sprintf("GHOST %s %s", *botNick, *nickPass))
 			} else {
@@ -437,7 +440,7 @@ func main() {
 		log.Println("Connected; joining", *channelList)
 		irc.Join(*channelList)
 	})
-	irc.AddHandler("NOTICE", func(irc *client.Conn, line *client.Line) {
+	irc.HandleFunc("NOTICE", func(irc *client.Conn, line *client.Line) {
 		if strings.ToLower(line.Nick) == "nickserv" {
 			log.Println("NickServ:", line.Args[1])
 			switch {
@@ -452,30 +455,30 @@ func main() {
 			}
 		}
 	})
-	irc.AddHandler("QUIT", func(irc *client.Conn, line *client.Line) {
+	irc.HandleFunc("QUIT", func(irc *client.Conn, line *client.Line) {
 		if line.Nick == *botNick {
 			log.Println("Nick", *botNick, "now available, changing to it")
 			irc.Nick(*botNick)
 		}
 	})
-	irc.AddHandler("NICK", func(irc *client.Conn, line *client.Line) {
-		if line.Args[len(line.Args)-1] == irc.Me.Nick {
-			log.Println("Nick successfully changed to", irc.Me.Nick)
+	irc.HandleFunc("NICK", func(irc *client.Conn, line *client.Line) {
+		if line.Args[len(line.Args)-1] == irc.Me().Nick {
+			log.Println("Nick successfully changed to", irc.Me().Nick)
 			if *nickPass != "" {
 				log.Println("Identifying with NickServ")
 				irc.Privmsg("NickServ", fmt.Sprintf("IDENTIFY %s", *nickPass))
 			}
 		}
 	})
-	irc.AddHandler("332", func(irc *client.Conn, line *client.Line) {
+	irc.HandleFunc("332", func(irc *client.Conn, line *client.Line) {
 		log.Println("Joined", line.Args[1])
 	})
-	irc.AddHandler("INVITE", onInvite)
-	irc.AddHandler("PRIVMSG", onPrivmsg)
+	irc.HandleFunc("INVITE", onInvite)
+	irc.HandleFunc("PRIVMSG", onPrivmsg)
 
 	quitting := false
 	quit := make(chan bool)
-	irc.AddHandler(client.DISCONNECTED, func(irc *client.Conn, line *client.Line) {
+	irc.HandleFunc(client.DISCONNECTED, func(irc *client.Conn, line *client.Line) {
 		if quitting {
 			quit <- true
 			return
@@ -486,14 +489,14 @@ func main() {
 		go func() {
 			time.Sleep(10 * time.Second)
 			log.Println("Reconnecting...")
-			irc.Connect(*server, *password)
+			irc.ConnectTo(*server, *password)
 		}()
 	})
 	if *useSSL {
 		log.Println("Using SSL")
 	}
 	log.Println("Connecting to", *server)
-	irc.Connect(*server, *password)
+	irc.ConnectTo(*server, *password)
 
 	sig = make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, os.Kill, syscall.SIGTERM)

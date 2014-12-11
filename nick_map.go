@@ -120,10 +120,10 @@ func addNickHandlers(irc *client.Conn) {
 		flag.Parse()
 	}
 
-	irc.AddHandler("QUIT", dropIdentifiedCache)
-	irc.AddHandler("307", isIdentified)
-	irc.AddHandler("330", isIdentified)
-	irc.AddHandler("318", isIdentified)
+	irc.HandleFunc("QUIT", dropIdentifiedCache)
+	irc.HandleFunc("307", isIdentified)
+	irc.HandleFunc("330", isIdentified)
+	irc.HandleFunc("318", isIdentified)
 }
 
 func (m *NickMap) MarshalJSON() (j []byte, err error) {

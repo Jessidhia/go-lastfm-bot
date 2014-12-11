@@ -13,8 +13,8 @@ func addWhoHandlers(irc *client.Conn) {
 		flag.Parse()
 	}
 
-	irc.AddHandler("352", whoHandler)
-	irc.AddHandler("315", whoHandler)
+	irc.HandleFunc("352", whoHandler)
+	irc.HandleFunc("315", whoHandler)
 	return
 }
 
@@ -82,7 +82,7 @@ func reportAllNowPlaying(irc *client.Conn, asker, channel string) {
 	irc.Notice(asker, msg)
 
 	for _, nick := range whoResult[channel] {
-		if nick != irc.Me.Nick {
+		if nick != irc.Me().Nick {
 			n := nick
 			go func() {
 				rateLimit <- true

@@ -4,84 +4,52 @@ package client
 // to manage tracking an irc connection etc.
 
 import (
-	"github.com/fluffle/goevent/event"
 	"strings"
+	"time"
 )
-
-// Consts for unnamed events.
-const (
-	INIT         = "init"
-	CONNECTED    = "connected"
-	DISCONNECTED = "disconnected"
-)
-
-// An IRC handler looks like this:
-type Handler func(*Conn, *Line)
-
-// AddHandler() adds an event handler for a specific IRC command.
-//
-// Handlers are triggered on incoming Lines from the server, with the handler
-// "name" being equivalent to Line.Cmd. Read the RFCs for details on what
-// replies could come from the server. They'll generally be things like
-// "PRIVMSG", "JOIN", etc. but all the numeric replies are left as ascii
-// strings of digits like "332" (mainly because I really didn't feel like
-// putting massive constant tables in).
-func (conn *Conn) AddHandler(name string, f Handler) event.Handler {
-	h := NewHandler(f)
-	conn.ER.AddHandler(h, name)
-	return h
-}
-
-// Wrap f in an anonymous unboxing function
-func NewHandler(f Handler) event.Handler {
-	return event.NewHandler(func(ev ...interface{}) {
-		f(ev[0].(*Conn), ev[1].(*Line))
-	})
-}
 
 // sets up the internal event handlers to do essential IRC protocol things
-var intHandlers map[string]event.Handler
-
-func init() {
-	intHandlers = make(map[string]event.Handler)
-	intHandlers[INIT] = NewHandler((*Conn).h_INIT)
-	intHandlers["001"] = NewHandler((*Conn).h_001)
-	intHandlers["433"] = NewHandler((*Conn).h_433)
-	intHandlers["CTCP"] = NewHandler((*Conn).h_CTCP)
-	intHandlers["NICK"] = NewHandler((*Conn).h_NICK)
-	intHandlers["PING"] = NewHandler((*Conn).h_PING)
+var intHandlers = map[string]HandlerFunc{
+	REGISTER: (*Conn).h_REGISTER,
+	"001":    (*Conn).h_001,
+	"433":    (*Conn).h_433,
+	CTCP:     (*Conn).h_CTCP,
+	NICK:     (*Conn).h_NICK,
+	PING:     (*Conn).h_PING,
 }
 
 func (conn *Conn) addIntHandlers() {
 	for n, h := range intHandlers {
-		conn.ER.AddHandler(h, n)
+		// internal handlers are essential for the IRC client
+		// to function, so we don't save their Removers here
+		conn.handle(n, h)
 	}
-}
-
-// Password/User/Nick broadcast on connection.
-func (conn *Conn) h_INIT(line *Line) {
-	if conn.password != "" {
-		conn.Pass(conn.password)
-	}
-	conn.Nick(conn.Me.Nick)
-	conn.User(conn.Me.Ident, conn.Me.Name)
 }
 
 // Basic ping/pong handler
 func (conn *Conn) h_PING(line *Line) {
-	conn.Raw("PONG :" + line.Args[0])
+	conn.Pong(line.Args[0])
 }
 
-// Handler to trigger a "CONNECTED" event on receipt of numeric 001
+// Handler for initial registration with server once tcp connection is made.
+func (conn *Conn) h_REGISTER(line *Line) {
+	if conn.cfg.Pass != "" {
+		conn.Pass(conn.cfg.Pass)
+	}
+	conn.Nick(conn.cfg.Me.Nick)
+	conn.User(conn.cfg.Me.Ident, conn.cfg.Me.Name)
+}
+
+// Handler to trigger a CONNECTED event on receipt of numeric 001
 func (conn *Conn) h_001(line *Line) {
 	// we're connected!
-	conn.ED.Dispatch(CONNECTED, conn, line)
+	conn.dispatch(&Line{Cmd: CONNECTED, Time: time.Now()})
 	// and we're being given our hostname (from the server's perspective)
 	t := line.Args[len(line.Args)-1]
 	if idx := strings.LastIndex(t, " "); idx != -1 {
 		t = t[idx+1:]
 		if idx = strings.Index(t, "@"); idx != -1 {
-			conn.Me.Host = t[idx+1:]
+			conn.cfg.Me.Host = t[idx+1:]
 		}
 	}
 }
@@ -97,32 +65,32 @@ func (conn *Conn) h_001(line *Line) {
 // Handler to deal with "433 :Nickname already in use"
 func (conn *Conn) h_433(line *Line) {
 	// Args[1] is the new nick we were attempting to acquire
-	neu := conn.NewNick(line.Args[1])
+	neu := conn.cfg.NewNick(line.Args[1])
 	conn.Nick(neu)
 	// if this is happening before we're properly connected (i.e. the nick
 	// we sent in the initial NICK command is in use) we will not receive
 	// a NICK message to confirm our change of nick, so ReNick here...
-	if line.Args[1] == conn.Me.Nick {
-		if conn.st {
-			conn.ST.ReNick(conn.Me.Nick, neu)
+	if line.Args[1] == conn.cfg.Me.Nick {
+		if conn.st != nil {
+			conn.st.ReNick(conn.cfg.Me.Nick, neu)
 		} else {
-			conn.Me.Nick = neu
+			conn.cfg.Me.Nick = neu
 		}
 	}
 }
 
 // Handle VERSION requests and CTCP PING
 func (conn *Conn) h_CTCP(line *Line) {
-	if line.Args[0] == "VERSION" {
-		conn.CtcpReply(line.Nick, "VERSION", "powered by goirc...")
-	} else if line.Args[0] == "PING" {
-		conn.CtcpReply(line.Nick, "PING", line.Args[2])
+	if line.Args[0] == VERSION {
+		conn.CtcpReply(line.Nick, VERSION, conn.cfg.Version)
+	} else if line.Args[0] == PING {
+		conn.CtcpReply(line.Nick, PING, line.Args[2])
 	}
 }
 
 // Handle updating our own NICK if we're not using the state tracker
 func (conn *Conn) h_NICK(line *Line) {
-	if !conn.st && line.Nick == conn.Me.Nick {
-		conn.Me.Nick = line.Args[0]
+	if conn.st == nil && line.Nick == conn.cfg.Me.Nick {
+		conn.cfg.Me.Nick = line.Args[0]
 	}
 }

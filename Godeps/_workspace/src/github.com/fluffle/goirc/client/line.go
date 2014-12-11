@@ -17,7 +17,7 @@ type Line struct {
 	Time                   time.Time
 }
 
-// NOTE: this doesn't copy l.Time (this should be read-only anyway)
+// Copy() returns a deep copy of the Line.
 func (l *Line) Copy() *Line {
 	nl := *l
 	nl.Args = make([]string, len(l.Args))
@@ -25,7 +25,61 @@ func (l *Line) Copy() *Line {
 	return &nl
 }
 
-func parseLine(s string) *Line {
+// Return the contents of the text portion of a line.  This only really
+// makes sense for lines with a :text part, but there are a lot of them.
+func (line *Line) Text() string {
+	if len(line.Args) > 0 {
+		return line.Args[len(line.Args)-1]
+	}
+	return ""
+}
+
+// Return the target of the line, usually the first Arg for the IRC verb.
+// If the line was broadcast from a channel, the target will be that channel.
+// If the line was broadcast by a user, the target will be that user.
+// TODO(fluffle): Add 005 CHANTYPES parsing for this?
+func (line *Line) Target() string {
+	switch line.Cmd {
+	case PRIVMSG, NOTICE, ACTION:
+		if !line.Public() {
+			return line.Nick
+		}
+	case CTCP, CTCPREPLY:
+		if !line.Public() {
+			return line.Nick
+		}
+		return line.Args[1]
+	}
+	if len(line.Args) > 0 {
+		return line.Args[0]
+	}
+	return ""
+}
+
+// NOTE: Makes the assumption that all channels start with #.
+func (line *Line) Public() bool {
+	switch line.Cmd {
+	case PRIVMSG, NOTICE, ACTION:
+		if strings.HasPrefix(line.Args[0], "#") {
+			return true
+		}
+	case CTCP, CTCPREPLY:
+		// CTCP prepends the CTCP verb to line.Args, thus for the message
+		//   :nick!user@host PRIVMSG #foo :\001BAR baz\001
+		// line.Args contains: []string{"BAR", "#foo", "baz"}
+		// TODO(fluffle): Arguably this is broken, and we should have
+		// line.Args containing: []string{"#foo", "BAR", "baz"}
+		// ... OR change conn.Ctcp()'s argument order to be consistent.
+		if strings.HasPrefix(line.Args[1], "#") {
+			return true
+		}
+	}
+	return false
+}
+
+
+// ParseLine() creates a Line from an incoming message from the IRC server.
+func ParseLine(s string) *Line {
 	line := &Line{Raw: s}
 	if s[0] == ':' {
 		// remove a source and parse it
@@ -62,7 +116,7 @@ func parseLine(s string) *Line {
 	// So, I think CTCP and (in particular) CTCP ACTION are better handled as
 	// separate events as opposed to forcing people to have gargantuan
 	// handlers to cope with the possibilities.
-	if (line.Cmd == "PRIVMSG" || line.Cmd == "NOTICE") &&
+	if (line.Cmd == PRIVMSG || line.Cmd == NOTICE) &&
 		len(line.Args[1]) > 2 &&
 		strings.HasPrefix(line.Args[1], "\001") &&
 		strings.HasSuffix(line.Args[1], "\001") {
@@ -72,16 +126,16 @@ func parseLine(s string) *Line {
 			// Replace the line with the unwrapped CTCP
 			line.Args[1] = t[1]
 		}
-		if c := strings.ToUpper(t[0]); c == "ACTION" && line.Cmd == "PRIVMSG" {
+		if c := strings.ToUpper(t[0]); c == ACTION && line.Cmd == PRIVMSG {
 			// make a CTCP ACTION it's own event a-la PRIVMSG
 			line.Cmd = c
 		} else {
 			// otherwise, dispatch a generic CTCP/CTCPREPLY event that
 			// contains the type of CTCP in line.Args[0]
-			if line.Cmd == "PRIVMSG" {
-				line.Cmd = "CTCP"
+			if line.Cmd == PRIVMSG {
+				line.Cmd = CTCP
 			} else {
-				line.Cmd = "CTCPREPLY"
+				line.Cmd = CTCPREPLY
 			}
 			line.Args = append([]string{c}, line.Args...)
 		}

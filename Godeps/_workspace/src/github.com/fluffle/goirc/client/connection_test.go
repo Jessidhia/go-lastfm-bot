@@ -1,56 +1,74 @@
 package client
 
 import (
-	"bufio"
 	"code.google.com/p/gomock/gomock"
-	"github.com/fluffle/goevent/event"
-	"github.com/fluffle/golog/logging"
 	"github.com/fluffle/goirc/state"
 	"strings"
 	"testing"
 	"time"
 )
 
+type checker struct {
+	t *testing.T
+	c chan struct{}
+}
+
+func callCheck(t *testing.T) checker {
+	return checker{t: t, c: make(chan struct{})}
+}
+
+func (c checker) call() {
+	c.c <- struct{}{}
+}
+
+func (c checker) assertNotCalled(fmt string, args ...interface{}) {
+	select {
+	case <-c.c:
+		c.t.Errorf(fmt, args...)
+	default:
+	}
+}
+
+func (c checker) assertWasCalled(fmt string, args ...interface{}) {
+	select {
+	case <-c.c:
+	case <-time.After(time.Millisecond):
+		// Usually need to wait for goroutines to settle :-/
+		c.t.Errorf(fmt, args...)
+	}
+}
+
 type testState struct {
 	ctrl *gomock.Controller
-	st   *state.MockStateTracker
-	ed   *event.MockEventDispatcher
+	st   *state.MockTracker
 	nc   *mockNetConn
 	c    *Conn
 }
 
+// NOTE: including a second argument at all prevents calling c.postConnect()
 func setUp(t *testing.T, start ...bool) (*Conn, *testState) {
 	ctrl := gomock.NewController(t)
-	st := state.NewMockStateTracker(ctrl)
-	r := event.NewRegistry()
-	ed := event.NewMockEventDispatcher(ctrl)
+	st := state.NewMockTracker(ctrl)
 	nc := MockNetConn(t)
-	c := Client("test", "test", "Testing IRC", r)
-	logging.SetLogLevel(logging.LogFatal)
+	c := SimpleClient("test", "test", "Testing IRC")
 
-	c.ED = ed
-	c.ST = st
-	c.st = true
+	c.st = st
 	c.sock = nc
-	c.Flood = true // Tests can take a while otherwise
-	c.Connected = true
-	if len(start) == 0 {
-		// Hack to allow tests of send, recv, write etc.
-		// NOTE: the value of the boolean doesn't matter.
-		c.postConnect()
-		// Sleep 1ms to allow background routines to start.
-		<-time.After(1e6)
-	}
+	c.cfg.Flood = true // Tests can take a while otherwise
+	c.connected = true
+	// If a second argument is passed to setUp, we tell postConnect not to
+	// start the various goroutines that shuttle data around.
+	c.postConnect(len(start) == 0)
+	// Sleep 1ms to allow background routines to start.
+	<-time.After(time.Millisecond)
 
-	return c, &testState{ctrl, st, ed, nc, c}
+	return c, &testState{ctrl, st, nc, c}
 }
 
 func (s *testState) tearDown() {
-	s.ed.EXPECT().Dispatch("disconnected", s.c, &Line{})
 	s.st.EXPECT().Wipe()
 	s.nc.ExpectNothing()
 	s.c.shutdown()
-	<-time.After(1e6)
 	s.ctrl.Finish()
 }
 
@@ -61,90 +79,89 @@ func TestEOF(t *testing.T) {
 	// Since we're not using tearDown() here, manually call Finish()
 	defer s.ctrl.Finish()
 
+	// Set up a handler to detect whether disconnected handlers are called
+	dcon := callCheck(t)
+	c.HandleFunc(DISCONNECTED, func(conn *Conn, line *Line) {
+		dcon.call()
+	})
+
 	// Simulate EOF from server
-	s.ed.EXPECT().Dispatch("disconnected", c, &Line{})
 	s.st.EXPECT().Wipe()
 	s.nc.Close()
 
-	// Since things happen in different internal goroutines, we need to wait
-	// 1 ms should be enough :-)
-	<-time.After(1e6)
+	// Verify that disconnected handler was called
+	dcon.assertWasCalled("Conn did not call disconnected handlers.")
 
 	// Verify that the connection no longer thinks it's connected
-	if c.Connected {
+	if c.Connected() {
 		t.Errorf("Conn still thinks it's connected to the server.")
 	}
 }
 
 func TestClientAndStateTracking(t *testing.T) {
-	// This doesn't use setUp() as we want to pass in a mock EventRegistry.
 	ctrl := gomock.NewController(t)
-	r := event.NewMockEventRegistry(ctrl)
-	st := state.NewMockStateTracker(ctrl)
-
-	for n, _ := range intHandlers {
-		// We can't use EXPECT() here as comparisons of functions are
-		// no longer valid in Go, which causes reflect.DeepEqual to bail.
-		// Instead, ignore the function arg and just ensure that all the
-		// handler names are correctly passed to AddHandler.
-		ctrl.RecordCall(r, "AddHandler", gomock.Any(), n)
-	}
-	c := Client("test", "test", "Testing IRC", r)
+	st := state.NewMockTracker(ctrl)
+	c := SimpleClient("test", "test", "Testing IRC")
 
 	// Assert some basic things about the initial state of the Conn struct
-	if c.ER != r || c.ED != r || c.st != false || c.ST != nil {
-		t.Errorf("Conn not correctly initialised with external deps.")
+	if me := c.cfg.Me; me.Nick != "test" || me.Ident != "test" ||
+		me.Name != "Testing IRC" || me.Host != "" {
+		t.Errorf("Conn.cfg.Me not correctly initialised.")
 	}
-	if c.in == nil || c.out == nil || c.cSend == nil || c.cLoop == nil {
-		t.Errorf("Conn control channels not correctly initialised.")
-	}
-	if c.Me.Nick != "test" || c.Me.Ident != "test" ||
-		c.Me.Name != "Testing IRC" || c.Me.Host != "" {
-		t.Errorf("Conn.Me not correctly initialised.")
+	// Check that the internal handlers are correctly set up
+	for k, _ := range intHandlers {
+		if _, ok := c.intHandlers.set[strings.ToLower(k)]; !ok {
+			t.Errorf("Missing internal handler for '%s'.", k)
+		}
 	}
 
-	// OK, while we're here with a mock event registry...
-	for n, _ := range stHandlers {
-		// See above.
-		ctrl.RecordCall(r, "AddHandler", gomock.Any(), n)
-	}
+	// Now enable the state tracking code and check its handlers
 	c.EnableStateTracking()
+	for k, _ := range stHandlers {
+		if _, ok := c.intHandlers.set[strings.ToLower(k)]; !ok {
+			t.Errorf("Missing state handler for '%s'.", k)
+		}
+	}
+	if len(c.stRemovers) != len(stHandlers) {
+		t.Errorf("Incorrect number of Removers (%d != %d) when adding state handlers.",
+			len(c.stRemovers), len(stHandlers))
+	}
 
-	// We're expecting the untracked me to be replaced by a tracked one.
-	if c.Me.Nick != "test" || c.Me.Ident != "test" ||
-		c.Me.Name != "Testing IRC" || c.Me.Host != "" {
+	// We're expecting the untracked me to be replaced by a tracked one
+	if me := c.cfg.Me; me.Nick != "test" || me.Ident != "test" ||
+		me.Name != "Testing IRC" || me.Host != "" {
 		t.Errorf("Enabling state tracking did not replace Me correctly.")
 	}
-	if !c.st || c.ST == nil || c.Me != c.ST.Me() {
+	if c.st == nil || c.cfg.Me != c.st.Me() {
 		t.Errorf("State tracker not enabled correctly.")
 	}
 
-	// Now, shim in the mock state tracker and test disabling state tracking.
-	me := c.Me
-	c.ST = st
+	// Now, shim in the mock state tracker and test disabling state tracking
+	me := c.cfg.Me
+	c.st = st
 	st.EXPECT().Wipe()
-	for n, _ := range stHandlers {
-		// See above.
-		ctrl.RecordCall(r, "DelHandler", gomock.Any(), n)
-	}
 	c.DisableStateTracking()
-	if c.st || c.ST != nil || c.Me != me {
+	if c.st != nil || c.cfg.Me != me {
 		t.Errorf("State tracker not disabled correctly.")
+	}
+
+	// Finally, check state tracking handlers were all removed correctly
+	for k, _ := range stHandlers {
+		if _, ok := c.intHandlers.set[strings.ToLower(k)]; ok && k != "NICK" {
+			// A bit leaky, because intHandlers adds a NICK handler.
+			t.Errorf("State handler for '%s' not removed correctly.", k)
+		}
+	}
+	if len(c.stRemovers) != 0 {
+		t.Errorf("stRemovers not zeroed correctly when removing state handlers.")
 	}
 	ctrl.Finish()
 }
 
 func TestSend(t *testing.T) {
-	// Passing a second value to setUp inhibits postConnect()
+	// Passing a second value to setUp stops goroutines from starting
 	c, s := setUp(t, false)
-	// We can't use tearDown here, as it will cause a deadlock in shutdown()
-	// trying to send kill messages down channels to nonexistent goroutines.
-	defer s.ctrl.Finish()
-
-	// ... so we have to do some of it's work here.
-	c.io = bufio.NewReadWriter(
-		bufio.NewReader(c.sock),
-		bufio.NewWriter(c.sock))
+	defer s.tearDown()
 
 	// Assert that before send is running, nothing should be sent to the socket
 	// but writes to the buffered channel "out" should not block.
@@ -152,10 +169,12 @@ func TestSend(t *testing.T) {
 	s.nc.ExpectNothing()
 
 	// We want to test that the a goroutine calling send will exit correctly.
-	exited := false
+	exited := callCheck(t)
+	// send() will decrement the WaitGroup, so we must increment it.
+	c.wg.Add(1)
 	go func() {
 		c.send()
-		exited = true
+		exited.call()
 	}()
 
 	// send is now running in the background as if started by postConnect.
@@ -168,15 +187,13 @@ func TestSend(t *testing.T) {
 	s.nc.Expect("SENT AFTER START")
 
 	// Now, use the control channel to exit send and kill the goroutine.
-	if exited {
-		t.Errorf("Exited before signal sent.")
-	}
-	c.cSend <- true
-	// Allow propagation time...
-	<-time.After(1e6)
-	if !exited {
-		t.Errorf("Didn't exit after signal.")
-	}
+	// This sneakily uses the fact that the other two goroutines that would
+	// normally be waiting for die to close are not running, so we only send
+	// to the goroutine started above. Normally shutdown() closes c.die and
+	// signals to all three goroutines (send, ping, runLoop) to exit.
+	exited.assertNotCalled("Exited before signal sent.")
+	c.die <- struct{}{}
+	exited.assertWasCalled("Didn't exit after signal.")
 	s.nc.ExpectNothing()
 
 	// Sending more on c.out shouldn't reach the network.
@@ -185,16 +202,11 @@ func TestSend(t *testing.T) {
 }
 
 func TestRecv(t *testing.T) {
-	// Passing a second value to setUp inhibits postConnect()
+	// Passing a second value to setUp stops goroutines from starting
 	c, s := setUp(t, false)
-	// We can't tearDown here as we need to explicitly test recv exiting.
-	// The same shutdown() caveat in TestSend above also applies.
+	// We can't use tearDown here because we're testing shutdown conditions
+	// (and so need to EXPECT() a call to st.Wipe() in the right place)
 	defer s.ctrl.Finish()
-
-	// ... so we have to do some of it's work here.
-	c.io = bufio.NewReadWriter(
-		bufio.NewReader(c.sock),
-		bufio.NewWriter(c.sock))
 
 	// Send a line before recv is started up, to verify nothing appears on c.in
 	s.nc.Send(":irc.server.org 001 test :First test line.")
@@ -202,7 +214,7 @@ func TestRecv(t *testing.T) {
 	// reader is a helper to do a "non-blocking" read of c.in
 	reader := func() *Line {
 		select {
-		case <-time.After(1e6):
+		case <-time.After(time.Millisecond):
 		case l := <-c.in:
 			return l
 		}
@@ -213,15 +225,13 @@ func TestRecv(t *testing.T) {
 	}
 
 	// We want to test that the a goroutine calling recv will exit correctly.
-	exited := false
+	exited := callCheck(t)
+	// recv() will decrement the WaitGroup, so we must increment it.
+	c.wg.Add(1)
 	go func() {
 		c.recv()
-		exited = true
+		exited.call()
 	}()
-
-	// Strangely, recv() needs some time to start up, but *only* when this test
-	// is run standalone with: client/_test/_testmain --test.run TestRecv
-	<-time.After(1e6)
 
 	// Now, this should mean that we'll receive our parsed line on c.in
 	if l := reader(); l == nil || l.Cmd != "001" {
@@ -235,30 +245,17 @@ func TestRecv(t *testing.T) {
 	}
 
 	// Test that recv does something useful with a line it can't parse
-	// (not that there are many, parseLine is forgiving).
+	// (not that there are many, ParseLine is forgiving).
 	s.nc.Send(":textwithnospaces")
 	if l := reader(); l != nil {
 		t.Errorf("Bad line still caused receive on input channel.")
 	}
 
 	// The only way recv() exits is when the socket closes.
-	if exited {
-		t.Errorf("Exited before socket close.")
-	}
-	s.ed.EXPECT().Dispatch("disconnected", c, &Line{})
+	exited.assertNotCalled("Exited before socket close.")
 	s.st.EXPECT().Wipe()
 	s.nc.Close()
-
-	// Since send and runloop aren't actually running, we need to empty their
-	// channels manually for recv() to be able to call shutdown correctly.
-	<-c.cSend
-	<-c.cLoop
-	<-c.cPing
-	// Give things time to shake themselves out...
-	<-time.After(1e6)
-	if !exited {
-		t.Errorf("Didn't exit on socket close.")
-	}
+	exited.assertWasCalled("Didn't exit on socket close.")
 
 	// Since s.nc is closed we can't attempt another send on it...
 	if l := reader(); l != nil {
@@ -267,14 +264,12 @@ func TestRecv(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	// Passing a second value to setUp inhibits postConnect()
+	// Passing a second value to setUp stops goroutines from starting
 	c, s := setUp(t, false)
-	// We can't use tearDown here, as it will cause a deadlock in shutdown()
-	// trying to send kill messages down channels to nonexistent goroutines.
-	defer s.ctrl.Finish()
+	defer s.tearDown()
 
 	// Set a low ping frequency for testing.
-	c.PingFreq = 50 * time.Millisecond
+	c.cfg.PingFreq = 50 * time.Millisecond
 
 	// reader is a helper to do a "non-blocking" read of c.out
 	reader := func() string {
@@ -290,13 +285,15 @@ func TestPing(t *testing.T) {
 	}
 
 	// Start ping loop.
-	exited := false
+	exited := callCheck(t)
+	// ping() will decrement the WaitGroup, so we must increment it.
+	c.wg.Add(1)
 	go func() {
 		c.ping()
-		exited = true
+		exited.call()
 	}()
 
-	// The first ping should be after a second,
+	// The first ping should be after 50ms,
 	// so we don't expect anything now on c.in
 	if s := reader(); s != "" {
 		t.Errorf("Line output directly after ping started.")
@@ -321,98 +318,89 @@ func TestPing(t *testing.T) {
 	}
 
 	// Now kill the ping loop.
-	if exited {
-		t.Errorf("Exited before signal sent.")
-	}
-
-	c.cPing <- true
+	// This sneakily uses the fact that the other two goroutines that would
+	// normally be waiting for die to close are not running, so we only send
+	// to the goroutine started above. Normally shutdown() closes c.die and
+	// signals to all three goroutines (send, ping, runLoop) to exit.
+	exited.assertNotCalled("Exited before signal sent.")
+	c.die <- struct{}{}
+	exited.assertWasCalled("Didn't exit after signal.")
 	// Make sure we're no longer pinging by waiting ~2x PingFreq
 	<-time.After(105 * time.Millisecond)
 	if s := reader(); s != "" {
 		t.Errorf("Line output after ping stopped.")
 	}
-
-	if !exited {
-		t.Errorf("Didn't exit after signal.")
-	}
 }
 
 func TestRunLoop(t *testing.T) {
-	// Passing a second value to setUp inhibits postConnect()
+	// Passing a second value to setUp stops goroutines from starting
 	c, s := setUp(t, false)
-	// We can't use tearDown here, as it will cause a deadlock in shutdown()
-	// trying to send kill messages down channels to nonexistent goroutines.
-	defer s.ctrl.Finish()
+	defer s.tearDown()
 
-	// ... so we have to do some of it's work here.
-	c.io = bufio.NewReadWriter(
-		bufio.NewReader(c.sock),
-		bufio.NewWriter(c.sock))
+	// Set up a handler to detect whether 001 handler is called
+	h001 := callCheck(t)
+	c.HandleFunc("001", func(conn *Conn, line *Line) {
+		h001.call()
+	})
+	h002 := callCheck(t)
+	// Set up a handler to detect whether 002 handler is called
+	c.HandleFunc("002", func(conn *Conn, line *Line) {
+		h002.call()
+	})
 
-	// NOTE: here we assert that no Dispatch event has been called yet by
-	// calling s.ctrl.Finish(). There doesn't appear to be any harm in this.
-	l1 := parseLine(":irc.server.org 001 test :First test line.")
+	l1 := ParseLine(":irc.server.org 001 test :First test line.")
 	c.in <- l1
-	s.ctrl.Finish()
+	h001.assertNotCalled("001 handler called before runLoop started.")
 
 	// We want to test that the a goroutine calling runLoop will exit correctly.
 	// Now, we can expect the call to Dispatch to take place as runLoop starts.
-	s.ed.EXPECT().Dispatch("001", c, l1)
-	exited := false
+	exited := callCheck(t)
+	// runLoop() will decrement the WaitGroup, so we must increment it.
+	c.wg.Add(1)
 	go func() {
 		c.runLoop()
-		exited = true
+		exited.call()
 	}()
-	// Here, the opposite seemed to take place, with TestRunLoop failing when
-	// run as part of the suite but passing when run on it's own.
-	<-time.After(1e6)
+	h001.assertWasCalled("001 handler not called after runLoop started.")
 
 	// Send another line, just to be sure :-)
-	l2 := parseLine(":irc.server.org 002 test :Second test line.")
-	s.ed.EXPECT().Dispatch("002", c, l2)
+	h002.assertNotCalled("002 handler called before expected.")
+	l2 := ParseLine(":irc.server.org 002 test :Second test line.")
 	c.in <- l2
-	// It appears some sleeping is needed after all of these to ensure channel
-	// sends occur before the close signal is sent below...
-	<-time.After(1e6)
+	h002.assertWasCalled("002 handler not called while runLoop started.")
 
 	// Now, use the control channel to exit send and kill the goroutine.
-	if exited {
-		t.Errorf("Exited before signal sent.")
-	}
-	c.cLoop <- true
-	// Allow propagation time...
-	<-time.After(1e6)
-	if !exited {
-		t.Errorf("Didn't exit after signal.")
-	}
+	// This sneakily uses the fact that the other two goroutines that would
+	// normally be waiting for die to close are not running, so we only send
+	// to the goroutine started above. Normally shutdown() closes c.die and
+	// signals to all three goroutines (send, ping, runLoop) to exit.
+	exited.assertNotCalled("Exited before signal sent.")
+	c.die <- struct{}{}
+	exited.assertWasCalled("Didn't exit after signal.")
 
 	// Sending more on c.in shouldn't dispatch any further events
 	c.in <- l1
+	h001.assertNotCalled("001 handler called after runLoop ended.")
 }
 
 func TestWrite(t *testing.T) {
-	// Passing a second value to setUp inhibits postConnect()
+	// Passing a second value to setUp stops goroutines from starting
 	c, s := setUp(t, false)
-	// We can't use tearDown here, as it will cause a deadlock in shutdown()
-	// trying to send kill messages down channels to nonexistent goroutines.
+	// We can't use tearDown here because we're testing shutdown conditions
+	// (and so need to EXPECT() a call to st.Wipe() in the right place)
 	defer s.ctrl.Finish()
-
-	// ... so we have to do some of it's work here.
-	c.io = bufio.NewReadWriter(
-		bufio.NewReader(c.sock),
-		bufio.NewWriter(c.sock))
 
 	// Write should just write a line to the socket.
 	c.write("yo momma")
 	s.nc.Expect("yo momma")
 
-	// Flood control is disabled -- setUp sets c.Flood = true -- so we should
+	// Flood control is disabled -- setUp sets c.cfg.Flood = true -- so we should
 	// not have set c.badness at this point.
 	if c.badness != 0 {
 		t.Errorf("Flood control used when Flood = true.")
 	}
 
-	c.Flood = false
+	c.cfg.Flood = false
 	c.write("she so useless")
 	s.nc.Expect("she so useless")
 
@@ -422,19 +410,8 @@ func TestWrite(t *testing.T) {
 	}
 
 	// Finally, test the error state by closing the socket then writing.
-	// This little function makes sure that all the blocking channels that are
-	// written to during the course of s.nc.Close() and c.write() are read from
-	// again, to prevent deadlocks when these are both called synchronously.
-	// XXX: This may well be a horrible hack.
-	go func() {
-		<-c.cSend
-		<-c.cLoop
-		<-c.cPing
-	}()
-	s.nc.Close()
-
-	s.ed.EXPECT().Dispatch("disconnected", c, &Line{})
 	s.st.EXPECT().Wipe()
+	s.nc.Close()
 	c.write("she can't pass unit tests")
 }
 
@@ -448,7 +425,7 @@ func TestRateLimit(t *testing.T) {
 
 	// We'll be needing this later...
 	abs := func(i time.Duration) time.Duration {
-		if (i < 0) {
+		if i < 0 {
 			return -i
 		}
 		return i
@@ -467,14 +444,15 @@ func TestRateLimit(t *testing.T) {
 	// So, time at the nanosecond resolution is a bit of a bitch. Choosing 60
 	// characters as the line length means we should be increasing badness by
 	// 2.5 seconds minus the delta between the two ratelimit calls. This should
-	// be minimal but it's guaranteed that it won't be zero. Use 10us as a fuzz.
-	if l := c.rateLimit(60); l != 0 || abs(c.badness - 25*1e8) > 10 * time.Microsecond {
+	// be minimal but it's guaranteed that it won't be zero. Use 20us as a fuzz.
+	if l := c.rateLimit(60); l != 0 ||
+		abs(c.badness-2500*time.Millisecond) > 20*time.Microsecond {
 		t.Errorf("Rate limit calculating badness incorrectly.")
 	}
 	// At this point, we can tip over the badness scale, with a bit of help.
 	// 720 chars => +8 seconds of badness => 10.5 seconds => ratelimit
-	if l := c.rateLimit(720); l != 8 * time.Second ||
-		abs(c.badness - 105*1e8) > 10 * time.Microsecond {
+	if l := c.rateLimit(720); l != 8*time.Second ||
+		abs(c.badness-10500*time.Millisecond) > 20*time.Microsecond {
 		t.Errorf("Rate limit failed to return correct limiting values.")
 		t.Errorf("l=%d, badness=%d", l, c.badness)
 	}
