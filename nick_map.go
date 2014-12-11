@@ -236,7 +236,6 @@ func (m *NickMap) DelNick(irc *client.Conn, target, nick string) (err error) {
 		irc.Privmsg(target, r)
 		return nil
 	}
-	panic("unreachable")
 }
 
 func (m *NickMap) QueryNick(irc *client.Conn, target, asker, nick string) {

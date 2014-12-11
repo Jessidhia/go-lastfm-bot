@@ -535,7 +535,7 @@ func saveCache() {
 func saveCacheNow() {
 	if *cacheFile != "" {
 		if fh, err := os.Create(*cacheFile); err != nil {
-			log.Printf("Error creating cache file:", err)
+			log.Println("Error creating cache file:", err)
 		} else {
 			defer fh.Close()
 			zw, _ := zlib.NewWriterLevel(fh, zlib.BestCompression)
