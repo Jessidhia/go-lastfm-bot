@@ -5,8 +5,6 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/Kovensky/go-lastfm"
-	"github.com/fluffle/goirc/client"
 	"log"
 	"os"
 	"os/signal"
@@ -14,6 +12,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/Kovensky/go-lastfm"
+	"github.com/fluffle/goirc/client"
 )
 
 var (

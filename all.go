@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/fluffle/goirc/client"
 	"log"
 	"strings"
+
+	"github.com/fluffle/goirc/client"
 )
 
 func addWhoHandlers(irc *client.Conn) {

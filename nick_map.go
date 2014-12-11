@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/Kovensky/go-lastfm"
-	"github.com/fluffle/goirc/client"
-	"github.com/howeyc/fsnotify"
 	"log"
 	"os"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Kovensky/go-lastfm"
+	"github.com/fluffle/goirc/client"
+	"github.com/howeyc/fsnotify"
 )
 
 var (
