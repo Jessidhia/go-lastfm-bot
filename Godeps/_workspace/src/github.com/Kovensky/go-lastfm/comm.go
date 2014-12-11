@@ -4,6 +4,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/pmylund/go-cache"
 )
 
 var (
@@ -32,13 +35,17 @@ type mockServer interface {
 type LastFM struct {
 	apiKey string
 	getter getter
-	Cache  Cache
+	Cache  *cache.Cache
 }
 
 // Create a new LastFM struct.
 // The apiKey parameter must be an API key registered with Last.fm.
 func New(apiKey string) LastFM {
-	return LastFM{apiKey: apiKey, getter: http.DefaultClient}
+	return LastFM{
+		apiKey: apiKey,
+		getter: http.DefaultClient,
+		Cache:  cache.New(5*time.Minute, 1*time.Minute),
+	}
 }
 
 func (lfm *LastFM) doQuery(method string, params map[string]string) (body io.ReadCloser, hdr http.Header, err error) {

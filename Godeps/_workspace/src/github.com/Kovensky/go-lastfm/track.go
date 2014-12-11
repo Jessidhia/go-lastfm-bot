@@ -69,7 +69,7 @@ func (lfm *LastFM) GetTrackInfo(track Track, user string, autocorrect bool) (inf
 		query["track"] = track.Name
 	}
 
-	if data, err := lfm.Cache.Get(method, query); data != nil {
+	if data, err := lfm.cacheGet(method, query); data != nil {
 		switch v := data.(type) {
 		case TrackInfo:
 			return &v, err
@@ -93,14 +93,14 @@ func (lfm *LastFM) GetTrackInfo(track Track, user string, autocorrect bool) (inf
 	}
 	if status.Error.Code != 0 {
 		err = &status.Error
-		go lfm.Cache.Set(method, query, err, hdr)
+		go lfm.cacheSet(method, query, err, hdr)
 		return
 	}
 
 	info = &status.TrackInfo
 	err = info.unmarshalHelper()
 	if err == nil {
-		go lfm.Cache.Set(method, query, info, hdr)
+		go lfm.cacheSet(method, query, info, hdr)
 	}
 	return
 }

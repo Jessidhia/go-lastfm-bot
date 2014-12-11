@@ -37,7 +37,7 @@ func (lfm *LastFM) GetRecentTracks(user string, count int) (tracks *RecentTracks
 		"extended": "1",
 		"limit":    strconv.Itoa(count)}
 
-	if data, err := lfm.Cache.Get(method, query); data != nil {
+	if data, err := lfm.cacheGet(method, query); data != nil {
 		switch v := data.(type) {
 		case RecentTracks:
 			return &v, err
@@ -61,14 +61,14 @@ func (lfm *LastFM) GetRecentTracks(user string, count int) (tracks *RecentTracks
 	}
 	if status.Error.Code != 0 {
 		err = &status.Error
-		go lfm.Cache.Set(method, query, err, hdr)
+		go lfm.cacheSet(method, query, err, hdr)
 		return
 	}
 
 	tracks = &status.RecentTracks
 	err = tracks.unmarshalHelper()
 	if err == nil {
-		go lfm.Cache.Set(method, query, tracks, hdr)
+		go lfm.cacheSet(method, query, tracks, hdr)
 	}
 	return
 }
@@ -90,7 +90,7 @@ func (lfm *LastFM) CompareTaste(user1 string, user2 string) (taste *Tasteometer,
 		"value1": user1,
 		"value2": user2}
 
-	if data, err := lfm.Cache.Get(method, query); data != nil {
+	if data, err := lfm.cacheGet(method, query); data != nil {
 		switch v := data.(type) {
 		case Tasteometer:
 			return &v, err
@@ -114,12 +114,12 @@ func (lfm *LastFM) CompareTaste(user1 string, user2 string) (taste *Tasteometer,
 	}
 	if status.Error.Code != 0 {
 		err = &status.Error
-		go lfm.Cache.Set(method, query, err, hdr)
+		go lfm.cacheSet(method, query, err, hdr)
 		return
 	}
 
 	taste = &status.Tasteometer
-	go lfm.Cache.Set(method, query, taste, hdr)
+	go lfm.cacheSet(method, query, taste, hdr)
 	return
 }
 
@@ -139,7 +139,7 @@ func (lfm *LastFM) GetUserNeighbours(user string, limit int) (neighbours Neighbo
 		"user":  user,
 		"limit": strconv.Itoa(limit)}
 
-	if data, err := lfm.Cache.Get(method, query); data != nil {
+	if data, err := lfm.cacheGet(method, query); data != nil {
 		return data.(Neighbours), err
 	} else if err != nil {
 		return nil, err
@@ -158,12 +158,12 @@ func (lfm *LastFM) GetUserNeighbours(user string, limit int) (neighbours Neighbo
 	}
 	if status.Error.Code != 0 {
 		err = &status.Error
-		go lfm.Cache.Set(method, query, err, hdr)
+		go lfm.cacheSet(method, query, err, hdr)
 		return
 	}
 
 	neighbours = status.Neighbours
-	go lfm.Cache.Set(method, query, neighbours, hdr)
+	go lfm.cacheSet(method, query, neighbours, hdr)
 	return
 }
 
@@ -221,7 +221,7 @@ func (lfm *LastFM) GetUserTopArtists(user string, period Period, limit int) (top
 		"period": periodStringMap[period],
 		"limit":  strconv.Itoa(limit)}
 
-	if data, err := lfm.Cache.Get(method, query); data != nil {
+	if data, err := lfm.cacheGet(method, query); data != nil {
 		switch v := data.(type) {
 		case TopArtists:
 			return &v, err
@@ -245,14 +245,14 @@ func (lfm *LastFM) GetUserTopArtists(user string, period Period, limit int) (top
 	}
 	if status.Error.Code != 0 {
 		err = &status.Error
-		go lfm.Cache.Set(method, query, err, hdr)
+		go lfm.cacheSet(method, query, err, hdr)
 		return
 	}
 
 	top = &status.TopArtists
 	err = top.unmarshalHelper()
 	if err == nil {
-		go lfm.Cache.Set(method, query, top, hdr)
+		go lfm.cacheSet(method, query, top, hdr)
 	}
 	return
 }

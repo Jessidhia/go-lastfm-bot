@@ -391,20 +391,12 @@ func main() {
 	loadNickMap()
 	loadCache()
 
-	cacheCleaner := time.Tick(time.Hour)
-	go func() {
-		for _ = range cacheCleaner {
-			cleanCache()
-		}
-	}()
 	if *cacheFile != "" {
-		cleanCache()
-
-		cacheTimer = time.NewTimer(time.Hour)
-		cacheTimer.Stop()
+		cacheTimer = time.NewTimer(120 * time.Second)
 		go func() {
 			for _ = range cacheTimer.C {
 				saveCacheNow()
+				cacheTimer.Reset(120 * time.Second)
 			}
 		}()
 	}
@@ -533,7 +525,7 @@ func loadCache() {
 			if err = lfm.Cache.Load(zr); err != nil {
 				log.Println("Error reading cache file:", err)
 			} else {
-				log.Println("Loaded", lfm.Cache.Len(), "cache entries")
+				log.Println("Loaded", lfm.Cache.ItemCount(), "cache entries")
 			}
 			zr.Close()
 		}
@@ -553,30 +545,12 @@ func saveCacheNow() {
 		} else {
 			defer fh.Close()
 			zw, _ := zlib.NewWriterLevel(fh, zlib.BestCompression)
-			if err = lfm.Cache.Store(zw); err != nil {
+			if err = lfm.Cache.Save(zw); err != nil {
 				log.Println("Error storing cache:", err)
 			} else {
-				log.Println("Cache saved with", lfm.Cache.Len(), "entries")
+				log.Println("Cache saved with", lfm.Cache.ItemCount(), "entries")
 			}
 			zw.Close()
 		}
 	}
-}
-
-func cleanCache() {
-	// postpone the cacheTimer if it's running
-	if cacheTimer != nil && cacheTimer.Stop() {
-		cacheTimer.Reset(10 * time.Second)
-	}
-
-	n := lfm.Cache.Clean()
-	if n > 0 {
-		log.Println("Cache: cleaned", n, "stale entries")
-	}
-
-	hr := lfm.Cache.HitRate(true)
-	if hr == hr { // !NaN
-		log.Printf("Hourly cache stats: %v entries, %.1f%% hit rate\n", lfm.Cache.Len(), 100*hr)
-	}
-	lfm.Cache.ResetStats()
 }

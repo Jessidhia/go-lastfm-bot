@@ -39,7 +39,7 @@ func (lfm *LastFM) GetTrackTopTags(track Track, autocorrect bool) (toptags *TopT
 		query["track"] = track.Name
 	}
 
-	if data, err := lfm.Cache.Get(method, query); data != nil {
+	if data, err := lfm.cacheGet(method, query); data != nil {
 		switch v := data.(type) {
 		case TopTags:
 			return &v, err
@@ -63,12 +63,12 @@ func (lfm *LastFM) GetTrackTopTags(track Track, autocorrect bool) (toptags *TopT
 	}
 	if status.Error.Code != 0 {
 		err = &status.Error
-		go lfm.Cache.Set(method, query, err, hdr)
+		go lfm.cacheSet(method, query, err, hdr)
 		return
 	}
 
 	toptags = &status.TopTags
-	go lfm.Cache.Set(method, query, toptags, hdr)
+	go lfm.cacheSet(method, query, toptags, hdr)
 	return
 }
 
@@ -96,7 +96,7 @@ func (lfm *LastFM) GetArtistTopTags(artist Artist, autocorrect bool) (toptags *T
 		query["artist"] = artist.Name
 	}
 
-	if data, err := lfm.Cache.Get(method, query); data != nil {
+	if data, err := lfm.cacheGet(method, query); data != nil {
 		switch v := data.(type) {
 		case TopTags:
 			return &v, err
@@ -120,11 +120,11 @@ func (lfm *LastFM) GetArtistTopTags(artist Artist, autocorrect bool) (toptags *T
 	}
 	if status.Error.Code != 0 {
 		err = &status.Error
-		go lfm.Cache.Set(method, query, err, hdr)
+		go lfm.cacheSet(method, query, err, hdr)
 		return
 	}
 
 	toptags = &status.TopTags
-	go lfm.Cache.Set(method, query, toptags, hdr)
+	go lfm.cacheSet(method, query, toptags, hdr)
 	return
 }
