@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"os/signal"
 	"regexp"
@@ -489,8 +490,21 @@ func main() {
 		saveCacheNow()
 		go func() {
 			time.Sleep(10 * time.Second)
-			log.Println("Reconnecting...")
-			irc.ConnectTo(*server, *password)
+			errorCount := 0
+			for !irc.Connected() {
+				log.Println("Reconnecting...")
+				err := irc.ConnectTo(*server, *password)
+				if err != nil {
+					log.Println("Error reconnecting:", err)
+					// limited exponential backoff (10, 12, 14, 18, 26, 42, 74)
+					retryDuration := 10 + time.Duration(math.Pow(2, float64(errorCount)))*time.Second
+					if errorCount < 6 {
+						errorCount += 1
+					}
+					log.Println("Retrying in", retryDuration)
+					time.Sleep(retryDuration)
+				}
+			}
 		}()
 	})
 	if *useSSL {
