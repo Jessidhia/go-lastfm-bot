@@ -1,62 +1,14 @@
 package cache
 
 import (
-	"encoding/binary"
 	"encoding/gob"
 	"fmt"
-	"hash/fnv"
 	"io"
 	"os"
 	"runtime"
 	"sync"
 	"time"
 )
-
-type unexportedInterface interface {
-	Set(string, interface{}, time.Duration)
-	Add(string, interface{}, time.Duration) error
-	Replace(string, interface{}, time.Duration) error
-	Get(string) (interface{}, bool)
-	Increment(string, int64) error
-	IncrementInt(string, int) (int, error)
-	IncrementInt8(string, int8) (int8, error)
-	IncrementInt16(string, int16) (int16, error)
-	IncrementInt32(string, int32) (int32, error)
-	IncrementInt64(string, int64) (int64, error)
-	IncrementUint(string, uint) (uint, error)
-	IncrementUintptr(string, uintptr) (uintptr, error)
-	IncrementUint8(string, uint8) (uint8, error)
-	IncrementUint16(string, uint16) (uint16, error)
-	IncrementUint32(string, uint32) (uint32, error)
-	IncrementUint64(string, uint64) (uint64, error)
-	IncrementFloat(string, float64) error
-	IncrementFloat32(string, float32) (float32, error)
-	IncrementFloat64(string, float64) (float64, error)
-	Decrement(string, int64) error
-	DecrementInt(string, int) (int, error)
-	DecrementInt8(string, int8) (int8, error)
-	DecrementInt16(string, int16) (int16, error)
-	DecrementInt32(string, int32) (int32, error)
-	DecrementInt64(string, int64) (int64, error)
-	DecrementUint(string, uint) (uint, error)
-	DecrementUintptr(string, uintptr) (uintptr, error)
-	DecrementUint8(string, uint8) (uint8, error)
-	DecrementUint16(string, uint16) (uint16, error)
-	DecrementUint32(string, uint32) (uint32, error)
-	DecrementUint64(string, uint64) (uint64, error)
-	DecrementFloat(string, float64) error
-	DecrementFloat32(string, float32) (float32, error)
-	DecrementFloat64(string, float64) (float64, error)
-	Delete(string)
-	DeleteExpired()
-	Items() map[string]*Item
-	ItemCount() int
-	Flush()
-	Save(io.Writer) error
-	SaveFile(string) error
-	Load(io.Reader) error
-	LoadFile(io.Reader) error
-}
 
 type Item struct {
 	Object     interface{}
@@ -71,6 +23,15 @@ func (item *Item) Expired() bool {
 	return item.Expiration.Before(time.Now())
 }
 
+const (
+	// For use with functions that take an expiration time.
+	NoExpiration time.Duration = -1
+	// For use with functions that take an expiration time. Equivalent to
+	// passing in the same expiration duration as was given to New() or
+	// NewFrom() when the cache was created (e.g. 5 minutes.)
+	DefaultExpiration time.Duration = 0
+)
+
 type Cache struct {
 	*cache
 	// If this is confusing, see the comment at the bottom of New()
@@ -83,9 +44,9 @@ type cache struct {
 	janitor           *janitor
 }
 
-// Add an item to the cache, replacing any existing item. If the duration is 0,
-// the cache's default expiration time is used. If it is -1, the item never
-// expires.
+// Add an item to the cache, replacing any existing item. If the duration is 0
+// (DefaultExpiration), the cache's default expiration time is used. If it is -1
+// (NoExpiration), the item never expires.
 func (c *cache) Set(k string, x interface{}, d time.Duration) {
 	c.Lock()
 	c.set(k, x, d)
@@ -96,7 +57,7 @@ func (c *cache) Set(k string, x interface{}, d time.Duration) {
 
 func (c *cache) set(k string, x interface{}, d time.Duration) {
 	var e *time.Time
-	if d == 0 {
+	if d == DefaultExpiration {
 		d = c.defaultExpiration
 	}
 	if d > 0 {
@@ -870,12 +831,20 @@ func (c *cache) DeleteExpired() {
 
 // Write the cache's items (using Gob) to an io.Writer.
 //
-// The caller should register any custom types with encoding/gob.Register
-// before calling this function.
+// NOTE: This method is deprecated in favor of c.Items() and NewFrom() (see the
+// documentation for NewFrom().)
 func (c *cache) Save(w io.Writer) (err error) {
 	enc := gob.NewEncoder(w)
+	defer func() {
+		if x := recover(); x != nil {
+			err = fmt.Errorf("Error registering item types with Gob library")
+		}
+	}()
 	c.RLock()
 	defer c.RUnlock()
+	for _, v := range c.items {
+		gob.Register(v.Object)
+	}
 	err = enc.Encode(&c.items)
 	return
 }
@@ -883,8 +852,8 @@ func (c *cache) Save(w io.Writer) (err error) {
 // Save the cache's items to the given filename, creating the file if it
 // doesn't exist, and overwriting it if it does.
 //
-// The caller should register any custom types with encoding/gob.Register
-// before calling this function.
+// NOTE: This method is deprecated in favor of c.Items() and NewFrom() (see the
+// documentation for NewFrom().)
 func (c *cache) SaveFile(fname string) error {
 	fp, err := os.Create(fname)
 	if err != nil {
@@ -901,8 +870,8 @@ func (c *cache) SaveFile(fname string) error {
 // Add (Gob-serialized) cache items from an io.Reader, excluding any items with
 // keys that already exist (and haven't expired) in the current cache.
 //
-// The caller should register any custom types with encoding/gob.Register
-// before calling this function.
+// NOTE: This method is deprecated in favor of c.Items() and NewFrom() (see the
+// documentation for NewFrom().)
 func (c *cache) Load(r io.Reader) error {
 	dec := gob.NewDecoder(r)
 	items := map[string]*Item{}
@@ -923,8 +892,8 @@ func (c *cache) Load(r io.Reader) error {
 // Load and add cache items from the given filename, excluding any items with
 // keys that already exist in the current cache.
 //
-// The caller should register any custom types with encoding/gob.Register
-// before calling this function.
+// NOTE: This method is deprecated in favor of c.Items() and NewFrom() (see the
+// documentation for NewFrom().)
 func (c *cache) LoadFile(fname string) error {
 	fp, err := os.Open(fname)
 	if err != nil {
@@ -995,152 +964,63 @@ func runJanitor(c *cache, ci time.Duration) {
 	go j.Run(c)
 }
 
-func newCache(de time.Duration) *cache {
+func newCache(de time.Duration, m map[string]*Item) *cache {
 	if de == 0 {
 		de = -1
 	}
 	c := &cache{
 		defaultExpiration: de,
-		items:             map[string]*Item{},
+		items:             m,
 	}
 	return c
 }
 
-// Return a new cache with a given default expiration duration and cleanup
-// interval. If the expiration duration is less than 1, the items in the cache
-// never expire (by default), and must be deleted manually. If the cleanup
-// interval is less than one, expired items are not deleted from the cache
-// before calling DeleteExpired.
-func New(defaultExpiration, cleanupInterval time.Duration) *Cache {
-	c := newCache(defaultExpiration)
+func newCacheWithJanitor(de time.Duration, ci time.Duration, m map[string]*Item) *Cache {
+	c := newCache(de, m)
 	// This trick ensures that the janitor goroutine (which--granted it
 	// was enabled--is running DeleteExpired on c forever) does not keep
 	// the returned C object from being garbage collected. When it is
 	// garbage collected, the finalizer stops the janitor goroutine, after
 	// which c can be collected.
 	C := &Cache{c}
-	if cleanupInterval > 0 {
-		runJanitor(c, cleanupInterval)
+	if ci > 0 {
+		runJanitor(c, ci)
 		runtime.SetFinalizer(C, stopJanitor)
 	}
 	return C
 }
 
-type unexportedShardedCache struct {
-	*shardedCache
+// Return a new cache with a given default expiration duration and cleanup
+// interval. If the expiration duration is less than one (or NoExpiration),
+// the items in the cache never expire (by default), and must be deleted
+// manually. If the cleanup interval is less than one, expired items are not
+// deleted from the cache before calling c.DeleteExpired().
+func New(defaultExpiration, cleanupInterval time.Duration) *Cache {
+	items := make(map[string]*Item)
+	return newCacheWithJanitor(defaultExpiration, cleanupInterval, items)
 }
 
-type shardedCache struct {
-	m       uint32
-	cs      []*cache
-	janitor *shardedJanitor
-}
-
-func (sc *shardedCache) bucket(k string) *cache {
-	h := fnv.New32()
-	h.Write([]byte(k))
-	n := binary.BigEndian.Uint32(h.Sum(nil))
-	return sc.cs[n%sc.m]
-}
-
-func (sc *shardedCache) Set(k string, x interface{}, d time.Duration) {
-	sc.bucket(k).Set(k, x, d)
-}
-
-func (sc *shardedCache) Add(k string, x interface{}, d time.Duration) error {
-	return sc.bucket(k).Add(k, x, d)
-}
-
-func (sc *shardedCache) Replace(k string, x interface{}, d time.Duration) error {
-	return sc.bucket(k).Replace(k, x, d)
-}
-
-func (sc *shardedCache) Get(k string) (interface{}, bool) {
-	return sc.bucket(k).Get(k)
-}
-
-func (sc *shardedCache) Increment(k string, n int64) error {
-	return sc.bucket(k).Increment(k, n)
-}
-
-func (sc *shardedCache) IncrementFloat(k string, n float64) error {
-	return sc.bucket(k).IncrementFloat(k, n)
-}
-
-func (sc *shardedCache) Decrement(k string, n int64) error {
-	return sc.bucket(k).Decrement(k, n)
-}
-
-func (sc *shardedCache) Delete(k string) {
-	sc.bucket(k).Delete(k)
-}
-
-func (sc *shardedCache) DeleteExpired() {
-	for _, v := range sc.cs {
-		v.DeleteExpired()
-	}
-}
-
-func (sc *shardedCache) Flush() {
-	for _, v := range sc.cs {
-		v.Flush()
-	}
-}
-
-type shardedJanitor struct {
-	Interval time.Duration
-	stop     chan bool
-}
-
-func (j *shardedJanitor) Run(sc *shardedCache) {
-	j.stop = make(chan bool)
-	tick := time.Tick(j.Interval)
-	for {
-		select {
-		case <-tick:
-			sc.DeleteExpired()
-		case <-j.stop:
-			return
-		}
-	}
-}
-
-func stopShardedJanitor(sc *unexportedShardedCache) {
-	sc.janitor.stop <- true
-}
-
-func runShardedJanitor(sc *shardedCache, ci time.Duration) {
-	j := &shardedJanitor{
-		Interval: ci,
-	}
-	sc.janitor = j
-	go j.Run(sc)
-}
-
-func newShardedCache(n int, de time.Duration) *shardedCache {
-	sc := &shardedCache{
-		m:  uint32(n - 1),
-		cs: make([]*cache, n),
-	}
-	for i := 0; i < n; i++ {
-		c := &cache{
-			defaultExpiration: de,
-			items:             map[string]*Item{},
-		}
-		sc.cs[i] = c
-	}
-	return sc
-}
-
-func unexportedNewSharded(shards int, defaultExpiration, cleanupInterval time.Duration) *unexportedShardedCache {
-	if defaultExpiration == 0 {
-		defaultExpiration = -1
-	}
-	sc := newShardedCache(shards, defaultExpiration)
-	SC := &unexportedShardedCache{sc}
-	if cleanupInterval > 0 {
-		runShardedJanitor(sc, cleanupInterval)
-		runtime.SetFinalizer(SC, stopShardedJanitor)
-	}
-	return SC
+// Return a new cache with a given default expiration duration and cleanup
+// interval. If the expiration duration is less than one (or NoExpiration),
+// the items in the cache never expire (by default), and must be deleted
+// manually. If the cleanup interval is less than one, expired items are not
+// deleted from the cache before calling c.DeleteExpired().
+//
+// NewFrom() also accepts an items map which will serve as the underlying map
+// for the cache. This is useful for starting from a deserialized cache
+// (serialized using e.g. gob.Encode() on c.Items()), or passing in e.g.
+// make(map[string]*Item, 500) to improve startup performance when the cache
+// is expected to reach a certain minimum size.
+//
+// Only the cache's methods synchronize access to this map, so it is not
+// recommended to keep any references to the map around after creating a cache.
+// If need be, the map can be accessed at a later point using c.Items() (subject
+// to the same caveat.)
+//
+// Note regarding serialization: When using e.g. gob, make sure to
+// gob.Register() the individual types stored in the cache before encoding a
+// map retrieved with c.Items(), and to register those same types before
+// decoding a blob containing an items map.
+func NewFrom(defaultExpiration, cleanupInterval time.Duration, items map[string]*Item) *Cache {
+	return newCacheWithJanitor(defaultExpiration, cleanupInterval, items)
 }

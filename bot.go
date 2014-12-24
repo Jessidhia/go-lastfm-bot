@@ -522,7 +522,7 @@ func loadCache() {
 		} else {
 			defer fh.Close()
 			zr, _ := zlib.NewReader(fh)
-			if err = lfm.Cache.Load(zr); err != nil {
+			if err = lfm.LoadCache(zr); err != nil {
 				log.Println("Error reading cache file:", err)
 			} else {
 				log.Println("Loaded", lfm.Cache.ItemCount(), "cache entries")
@@ -545,7 +545,7 @@ func saveCacheNow() {
 		} else {
 			defer fh.Close()
 			zw, _ := zlib.NewWriterLevel(fh, zlib.BestCompression)
-			if err = lfm.Cache.Save(zw); err != nil {
+			if err = lfm.SaveCache(zw); err != nil {
 				log.Println("Error storing cache:", err)
 			} else {
 				log.Println("Cache saved with", lfm.Cache.ItemCount(), "entries")

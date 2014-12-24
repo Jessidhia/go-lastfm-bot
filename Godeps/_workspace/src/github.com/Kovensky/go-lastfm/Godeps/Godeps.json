@@ -4,7 +4,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/pmylund/go-cache",
-			"Rev": "abe7c4fb56a728072bf001fcec0c32f8d7b5c789"
+			"Rev": "03284ca422855c22f78fabc19050734205aeea58"
 		}
 	]
 }

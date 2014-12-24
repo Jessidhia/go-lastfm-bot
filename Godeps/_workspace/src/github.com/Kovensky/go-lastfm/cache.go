@@ -2,15 +2,19 @@ package lastfm
 
 import (
 	"encoding/gob"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pmylund/go-cache"
 )
 
 func init() {
-	// github.com/pmylund/go-cache's caching is gob-based
+	gob.Register(cache.Item{})
+
 	gob.Register(LastFMError{})
 	gob.Register(Neighbours{})
 	gob.Register(RecentTracks{})
@@ -19,6 +23,11 @@ func init() {
 	gob.Register(TopTags{})
 	gob.Register(TrackInfo{})
 }
+
+const (
+	DefaultDuration        = 5 * time.Minute
+	DefaultCleanupInterval = 1 * time.Minute
+)
 
 func makeCacheKey(method string, query map[string]string) string {
 	keys := make([]string, 0, len(query))
@@ -78,4 +87,37 @@ func (lfm *LastFM) cacheSet(method string, query map[string]string, v interface{
 		key := makeCacheKey(method, query)
 		lfm.Cache.Set(key, v, dur)
 	}
+}
+
+// Writes a gob-encoded representation of the Cache to the
+// given io.Writer.
+func (lfm *LastFM) SaveCache(w io.Writer) error {
+	lfm.Cache.RLock()
+	defer lfm.Cache.RUnlock()
+
+	enc := gob.NewEncoder(w)
+	return enc.Encode(lfm.Cache.Items())
+}
+
+// Reads a gob-encoded representation of the Cache from the
+// given io.Reader. Does not change the current Cache if
+// there is a read or decoding error.
+//
+// The Cache will have its parameters set to this package's
+// DefaultDuration and DefaultCleanupInterval. To change
+// the cache's duration/interval, a new cache is needed
+// like so:
+//
+//     lfm.Cache = cache.NewFrom(duration, interval, lfm.Cache.Items())
+//
+// This method is not safe for concurrent access, use before
+// starting any requests.
+func (lfm *LastFM) LoadCache(r io.Reader) error {
+	dec := gob.NewDecoder(r)
+	var items map[string]*cache.Item
+	if err := dec.Decode(&items); err != nil {
+		return err
+	}
+	lfm.Cache = cache.NewFrom(DefaultDuration, DefaultCleanupInterval, items)
+	return nil
 }

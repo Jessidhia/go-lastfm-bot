@@ -8,7 +8,7 @@
 		},
 		{
 			"ImportPath": "github.com/Kovensky/go-lastfm",
-			"Rev": "386ebbafd4ad9ae53bd07091728c29729d845ae9"
+			"Rev": "e9197b34ec734ca985fe248ba91a08706cef20ee"
 		},
 		{
 			"ImportPath": "github.com/fluffle/goirc/client",
@@ -29,7 +29,7 @@
 		},
 		{
 			"ImportPath": "github.com/pmylund/go-cache",
-			"Rev": "abe7c4fb56a728072bf001fcec0c32f8d7b5c789"
+			"Rev": "03284ca422855c22f78fabc19050734205aeea58"
 		}
 	]
 }

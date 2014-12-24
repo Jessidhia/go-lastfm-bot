@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/pmylund/go-cache"
 )
@@ -44,7 +43,7 @@ func New(apiKey string) LastFM {
 	return LastFM{
 		apiKey: apiKey,
 		getter: http.DefaultClient,
-		Cache:  cache.New(5*time.Minute, 1*time.Minute),
+		Cache:  cache.New(DefaultDuration, DefaultCleanupInterval),
 	}
 }
 
